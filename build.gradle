@@ -1,0 +1,399 @@
+import groovy.json.JsonSlurper
+
+plugins {
+    id 'maven-publish'
+    id 'net.fabricmc.fabric-loom' version '1.17-SNAPSHOT' apply false
+    id 'net.fabricmc.fabric-loom-remap' version '1.17-SNAPSHOT' apply false
+    id 'com.replaymod.preprocess' version 'dds-dev-0.3.3'
+}
+
+
+/*
+ * Supported Minecraft versions.
+ *
+ * settings.json is the single source of truth for the human-facing version
+ * order. Versions are always maintained from newest to oldest.
+ */
+def versionConfig = new JsonSlurper().parseText(
+        file('settings.json').getText('UTF-8')
+)
+
+def supportedVersions = versionConfig.versions.collect {
+    it.toString()
+}
+
+def orderedBuildTaskPaths = supportedVersions.collect {
+    ":${it}:build"
+}
+
+def javaRuntimeVerificationTaskPaths = supportedVersions.collect {
+    ":${it}:verifyJavaRuntime"
+}
+
+def mixinAuditTaskPaths = supportedVersions.collectMany { version ->
+    [
+            ":${version}:runMixinAudit",
+            ":${version}:runMixinAuditClient",
+    ]
+}
+
+preprocess {
+    strictExtraMappings = false
+
+    /*
+     * Keep node declarations in newest -> oldest order for readability.
+     */
+    def mc2612 = createNode('26.1.2', 26_01_02, null)
+    def mc262 = createNode('26.2', 26_02_00, null)
+
+    def mc12111 = createNode('1.21.11', 1_21_11, '')
+    def mc12110 = createNode('1.21.10', 1_21_10, '')
+    def mc1219 = createNode('1.21.9', 1_21_09, '')
+    def mc1218 = createNode('1.21.8', 1_21_08, '')
+    def mc1215 = createNode('1.21.5', 1_21_05, '')
+    def mc1214 = createNode('1.21.4', 1_21_04, '')
+    def mc1213 = createNode('1.21.3', 1_21_03, '')
+    def mc1211 = createNode('1.21.1', 1_21_01, '')
+
+    def mc1206 = createNode('1.20.6', 1_20_06, '')
+    def mc1204 = createNode('1.20.4', 1_20_04, '')
+    def mc1202 = createNode('1.20.2', 1_20_02, '')
+    def mc1201 = createNode('1.20.1', 1_20_01, '')
+
+    def mc1194 = createNode('1.19.4', 1_19_04, '')
+    def mc1193 = createNode('1.19.3', 1_19_03, '')
+    def mc1192 = createNode('1.19.2', 1_19_02, '')
+
+    def mc1182 = createNode('1.18.2', 1_18_02, '')
+    def mc118 = createNode('1.18', 1_18_00, '')
+    def mc1171 = createNode('1.17.1', 1_17_01, '')
+
+    def mc1165 = createNode('1.16.5', 1_16_05, '')
+    def mc1163 = createNode('1.16.3', 1_16_03, '')
+    def mc1162 = createNode('1.16.2', 1_16_02, '')
+    def mc1161 = createNode('1.16.1', 1_16_01, '')
+
+    def mc1152 = createNode('1.15.2', 1_15_02, '')
+    def mc1144 = createNode('1.14.4', 1_14_04, '')
+
+
+    /*
+     * Preprocessor mapping topology.
+     *
+     * IMPORTANT:
+     *
+     * The declaration/build/display order is newest -> oldest.
+     *
+     * The mapping graph below is intentionally kept in its established
+     * chronological topology because these links correspond to the existing
+     * mapping bridge files.
+     * 1.15.2 is only a historical mapping-graph anchor.
+     */
+    mc1152.link(
+            mc1144,
+            file('versions/mapping-1.15.2-1.14.4.txt')
+    )
+
+    mc1152.link(
+            mc1161,
+            file('versions/mapping-1.15.2-1.16.1.txt')
+    )
+
+    mc1161.link(
+            mc1162,
+            file('versions/mapping-1.16.1-1.16.2.txt')
+    )
+
+    mc1162.link(
+            mc1163,
+            file('versions/mapping-1.16.2-1.16.3.txt')
+    )
+
+    mc1163.link(
+            mc1165,
+            file('versions/mapping-1.16.3-1.16.5.txt')
+    )
+
+    mc1165.link(
+            mc1171,
+            file('versions/mapping-1.16.5-1.17.1.txt')
+    )
+
+    mc1171.link(
+            mc118,
+            file('versions/mapping-1.17.1-1.18.txt')
+    )
+
+    mc118.link(
+            mc1182,
+            file('versions/mapping-1.18-1.18.2.txt')
+    )
+
+    mc1182.link(
+            mc1192,
+            file('versions/mapping-1.18.2-1.19.2.txt')
+    )
+
+    mc1192.link(
+            mc1193,
+            file('versions/mapping-1.19.2-1.19.3.txt')
+    )
+
+    mc1193.link(
+            mc1194,
+            file('versions/mapping-1.19.3-1.19.4.txt')
+    )
+
+    mc1194.link(
+            mc1201,
+            file('versions/mapping-1.19.4-1.20.1.txt')
+    )
+
+    mc1201.link(
+            mc1202,
+            file('versions/mapping-1.20.1-1.20.2.txt')
+    )
+
+    mc1202.link(
+            mc1204,
+            file('versions/mapping-1.20.2-1.20.4.txt')
+    )
+
+    mc1204.link(
+            mc1206,
+            file('versions/mapping-1.20.4-1.20.6.txt')
+    )
+
+    mc1206.link(
+            mc1211,
+            file('versions/mapping-1.20.6-1.21.1.txt')
+    )
+
+    mc1211.link(
+            mc1213,
+            file('versions/mapping-1.21.1-1.21.3.txt')
+    )
+
+    mc1213.link(
+            mc1214,
+            file('versions/mapping-1.21.3-1.21.4.txt')
+    )
+
+    mc1214.link(
+            mc1215,
+            file('versions/mapping-1.21.4-1.21.5.txt')
+    )
+
+    mc1215.link(
+            mc1218,
+            file('versions/mapping-1.21.5-1.21.8.txt')
+    )
+
+    mc1218.link(
+            mc1219,
+            file('versions/mapping-1.21.8-1.21.9.txt')
+    )
+
+    mc1219.link(
+            mc12110,
+            file('versions/mapping-1.21.9-1.21.10.txt')
+    )
+
+    mc12110.link(
+            mc12111,
+            file('versions/mapping-1.21.10-1.21.11.txt')
+    )
+
+    mc12111.link(
+            mc2612,
+            file('versions/mapping-1.21.11-26.1.2.txt')
+    )
+
+    mc2612.link(
+            mc262,
+            file('versions/mapping-26.1.2-26.2.txt')
+    )
+
+
+    /*
+     * Expose the numeric Minecraft version to every subproject.
+     */
+    for (final def node in getNodes()) {
+        findProject(node.project).ext.mcVersion = node.mcVersion
+    }
+}
+
+
+/*
+ * Establish an explicit newest -> oldest ordering between the build tasks.
+ *
+ * This is an ordering constraint only. It does not make one Minecraft
+ * version depend functionally on another Minecraft version.
+ */
+gradle.projectsEvaluated {
+    for (int i = 1; i < supportedVersions.size(); i++) {
+        def currentVersion = supportedVersions[i]
+        def previousVersion = supportedVersions[i - 1]
+
+        project(":${currentVersion}")
+                .tasks
+                .named('build')
+                .configure {
+                    mustRunAfter(":${previousVersion}:build")
+                }
+    }
+}
+
+/*
+ * Mixin audits are deliberately serialized.
+ *
+ * Even though every target owns an isolated run directory, starting dozens of
+ * Minecraft JVMs in parallel provides no useful signal and unnecessarily
+ * increases memory/toolchain pressure.
+ */
+gradle.projectsEvaluated {
+    supportedVersions.each { version ->
+        project(":${version}")
+                .tasks
+                .named('runMixinAuditClient')
+                .configure {
+                    mustRunAfter(
+                            ":${version}:runMixinAudit"
+                    )
+                }
+    }
+
+    for (int i = 1; i < supportedVersions.size(); i++) {
+        def currentVersion = supportedVersions[i]
+        def previousVersion = supportedVersions[i - 1]
+
+        project(":${currentVersion}")
+                .tasks
+                .named('runMixinAudit')
+                .configure {
+                    mustRunAfter(
+                            ":${previousVersion}:runMixinAuditClient"
+                    )
+                }
+    }
+}
+
+/*
+ * Resolve and verify the game Java launcher for every supported target.
+ *
+ * This is opt-in and not part of normal builds because a fresh machine may
+ * need to download several distinct JDK major versions.
+ */
+tasks.register('verifyJavaRuntimes') {
+    group = 'verification'
+
+    description =
+            'Verifies the Java runtime selected for every Minecraft target.'
+
+    dependsOn(javaRuntimeVerificationTaskPaths)
+}
+
+
+/*
+ * Run the canonical shared-network JVM contract suite.
+ */
+tasks.register('testNetworkContracts') {
+    group = 'verification'
+
+    description =
+            'Runs shared DDS network contract tests on Minecraft 1.21.11.'
+
+    dependsOn(':1.21.11:test')
+}
+
+/*
+ * Run server + client Mixin audit on the canonical DDS development target.
+ *
+ * This is the normal fast verification gate while implementing/refactoring
+ * Mixins.
+ */
+tasks.register('auditMixinsCanonical') {
+    group = 'verification'
+
+    description =
+            'Audits server and client Mixins on Minecraft 1.21.11.'
+
+    dependsOn(
+            ':1.21.11:runMixinAudit',
+            ':1.21.11:runMixinAuditClient'
+    )
+}
+
+
+/*
+ * Run server + client Mixin audit on every supported Minecraft target.
+ *
+ * This is intentionally opt-in instead of part of buildAll because it launches
+ * Minecraft once for each environment/version combination.
+ */
+tasks.register('auditMixinsAll') {
+    group = 'verification'
+
+    description =
+            'Audits server and client Mixins on every supported Minecraft target.'
+
+    dependsOn(mixinAuditTaskPaths)
+}
+
+/*
+ * Build every supported Minecraft target.
+ */
+tasks.register('buildAll') {
+    group = 'build'
+
+    description =
+            'Builds every supported Minecraft target from newest to oldest.'
+
+    dependsOn(orderedBuildTaskPaths)
+}
+
+
+/*
+ * Build every supported Minecraft target and gather release jars.
+ */
+tasks.register('buildAndGather') {
+    group = 'build'
+
+    description =
+            'Builds all targets from newest to oldest and copies release jars into build/releases.'
+
+    dependsOn(orderedBuildTaskPaths)
+
+    doLast {
+        def out = layout
+                .buildDirectory
+                .dir('releases')
+                .get()
+                .asFile
+
+        delete out
+        out.mkdirs()
+
+        /*
+         * Gather in the same newest -> oldest order used by settings.json.
+         */
+        supportedVersions.each { version ->
+            def p = project(":${version}")
+
+            copy {
+                from(new File(p.buildDir, 'libs'))
+
+                include('*.jar')
+
+                exclude(
+                        '*-sources.jar',
+                        '*-dev.jar'
+                )
+
+                into(out)
+            }
+        }
+
+        println "Release jars: ${out}"
+    }
+}

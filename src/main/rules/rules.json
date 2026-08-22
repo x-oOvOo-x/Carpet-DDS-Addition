@@ -1,0 +1,451 @@
+{
+  "schemaVersion": 2,
+  "rules": [
+    {
+      "name": "icePlaceWater",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "普通冰放水"
+      },
+      "description": {
+        "en_us": "Using normal ice without sneaking performs a water-bucket-style action and consumes one ice; cauldrons fill to full, while sneak-use remains vanilla.",
+        "zh_cn": "手持普通冰非潜行右键时执行类似水桶的放水行为并消耗一块冰；炼药锅直接补满水，潜行右键保持原版放置冰块行为。"
+      }
+    },
+    {
+      "name": "noCampfireDamage",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "普通篝火无伤害"
+      },
+      "description": {
+        "en_us": "Prevents lit normal campfires from damaging living entities. Soul campfires are unaffected, and all other campfire behavior remains vanilla.",
+        "zh_cn": "使点燃的普通篝火不再对生物造成伤害。灵魂篝火不受影响，篝火的点燃、熄灭、烹饪及烟雾等其他机制保持原版。"
+      }
+    },
+    {
+      "name": "noSweetBerryBushEffects",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "禁用甜浆果丛负面效果"
+      },
+      "description": {
+        "en_us": "Prevents sweet berry bushes from damaging or slowing living entities while keeping all other behavior vanilla.",
+        "zh_cn": "使甜浆果丛不再对生物造成伤害或减速，同时保持其生长、采摘等其他机制不变。"
+      }
+    },
+    {
+      "name": "noBabyPiglinItemPickup",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11601,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "猪灵宝宝不拾取物品"
+      },
+      "description": {
+        "en_us": "Prevents baby piglins from targeting and picking up dropped items. Adult piglins and bartering remain vanilla.",
+        "zh_cn": "使幼年猪灵不再将地面掉落物作为目标或拾取掉落物，成年猪灵及以物换物机制保持原版。"
+      }
+    },
+    {
+      "name": "sneakToggleIronTrapdoor",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "潜行开关铁活板门"
+      },
+      "description": {
+        "en_us": "Allows iron trapdoors to be manually toggled by sneak-right-clicking with an empty main hand. Redstone power state and all other behavior remain vanilla.",
+        "zh_cn": "潜行并主手空手右键铁活板门时，可手动切换其开启或关闭状态。红石供电状态及其他机制保持原版。"
+      }
+    },
+    {
+      "name": "naturalPassiveSpawning",
+      "type": "String",
+      "default": "all",
+      "categories": [
+        "optimization",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "被动生物自然生成控制"
+      },
+      "description": {
+        "en_us": "Controls natural passive mob spawning. Use all, none, or a comma-separated combination of land, fish, squid, axolotl, bat and dolphin. Disabling land also disables initial creature spawning in newly generated chunks.",
+        "zh_cn": "控制被动生物的自然生成。可设为 all、none，或使用逗号组合 land、fish、squid、axolotl、bat、dolphin。关闭 land 时也会禁止新区块首次生成陆地生物。"
+      }
+    },
+    {
+      "name": "petRegeneration",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "宠物回血"
+      },
+      "description": {
+        "en_us": "Allows owned tamed pets that lack vanilla passive regeneration to slowly recover health at the same rate as horses.",
+        "zh_cn": "使原版不具备自然恢复能力的有主驯服宠物，以与马系生物相同的速度缓慢恢复生命值。"
+      }
+    },
+    {
+      "name": "enhancedNameTag",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11904,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "增强命名牌"
+      },
+      "description": {
+        "en_us": "Enhances vanilla name tags with formatted entity names and persistent floating block labels.",
+        "zh_cn": "增强原版命名牌（仅支持1.19.4+）：支持格式化实体名称，并可通过潜行右键为方块添加持久悬浮名称。"
+      }
+    },
+    {
+      "name": "rightClickHarvest",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "一举两得"
+      },
+      "description": {
+        "en_us": "Right-click mature crops to harvest them and automatically replant using one harvested seed or crop.",
+        "zh_cn": "右键成熟作物进行收获，并自动补种。"
+      }
+    },
+    {
+      "name": "renewableCalcite",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11700,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "方解石可再生"
+      },
+      "description": {
+        "en_us": "Lava above smooth basalt generates calcite when adjacent to an amethyst block, mirroring vanilla basalt generation.",
+        "zh_cn": "熔岩下方为平滑玄武岩，且上方或水平相邻紫水晶块时生成方解石，机制与原版玄武岩生成相同。"
+      }
+    },
+    {
+      "name": "renewableTuff",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11700,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "凝灰岩可再生"
+      },
+      "description": {
+        "en_us": "Lava above smooth basalt generates tuff when adjacent to a magma block, mirroring vanilla basalt generation.",
+        "zh_cn": "熔岩下方为平滑玄武岩，且上方或水平相邻岩浆块时生成凝灰岩，机制与原版玄武岩生成相同。"
+      }
+    },
+    {
+      "name": "noBeeAnger",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11500,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "蜜蜂不愤怒"
+      },
+      "description": {
+        "en_us": "Prevents bees from entering an angry state and attacking entities while preserving their other vanilla behavior.",
+        "zh_cn": "使蜜蜂不会进入愤怒状态或攻击实体，同时保持采蜜、授粉、回巢等其他原版行为。"
+      }
+    },
+    {
+      "name": "infiniteVaultOpening",
+      "type": "boolean",
+      "default": false,
+      "minMc": 12100,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "宝库无限开启"
+      },
+      "description": {
+        "en_us": "Allows players to repeatedly open the same vault without removing its rewarded player records.",
+        "zh_cn": "允许同一玩家使用钥匙重复开启同一个宝库，关闭规则后恢复原版的单次领取限制。"
+      }
+    },
+    {
+      "name": "ddsNetworkProtocol",
+      "type": "boolean",
+      "default": true,
+      "minMc": 11404,
+      "maxMc": 260200,
+      "categories": [
+        "feature"
+      ],
+      "displayName": {
+        "zh_cn": "DDS网络协议"
+      },
+      "description": {
+        "en_us": "Enables the optional DDS client-server network protocol used by negotiated client enhancements. Clients without DDS remain compatible.",
+        "zh_cn": "启用 DDS 可选客户端—服务端网络协议，为协商式客户端增强功能提供专用数据通道；未安装 DDS 客户端的玩家仍可正常连接。"
+      }
+    },
+    {
+      "name": "undoRedo",
+      "type": "boolean",
+      "default": false,
+      "minMc": 12109,
+      "categories": [
+        "feature",
+        "creative"
+      ],
+      "displayName": {
+        "zh_cn": "撤销与重做"
+      },
+      "description": {
+        "en_us": "Allows Creative Mode players to undo and redo their own recorded world edits with /undo and /redo. An optional DDS client adds Ctrl+Z and Ctrl+Alt+Z shortcuts.",
+        "zh_cn": "允许创造模式玩家撤销或重做自己记录的世界修改，可使用 /undo 与 /redo；可选安装 DDS 客户端后支持 Ctrl+Z 撤销、Ctrl+Alt+Z 重做。"
+      }
+    },
+    {
+      "name": "quickContainerAccess",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11404,
+      "maxMc": 260200,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "快捷容器访问"
+      },
+      "description": {
+        "en_us": "Adds server-side portable access and quick inventory interactions for vanilla storage items and portable workstation menus; an optional DDS client removes vanilla prediction flicker.",
+        "zh_cn": "为原版潜影盒、末影箱及多种功能方块增加服务端便携打开与背包快捷存取；客户端可选安装 DDS 以获得更好的使用体验。"
+      }
+    },
+    {
+      "name": "directBlockDrops",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "方块掉落自动入包"
+      },
+      "description": {
+        "en_us": "Sends item drops caused by player block breaking and DDS right-click harvesting directly into the player's inventory when space is available. Synchronous chain drops and container contents are included; overflow remains on the ground.",
+        "zh_cn": "玩家破坏方块或使用DDS右键收获时，将该操作同步产生的物品掉落优先直接送入玩家背包，包括连锁破坏、失去支撑的方块及容器内容物；背包装不下的部分仍正常掉落。"
+      }
+    },
+    {
+      "name": "commandCamera",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11605,
+      "maxMc": 260200,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "安全旁观模式"
+      },
+      "description": {
+        "en_us": "Allows survival players in a safe state to enter a protected spectator camera with /c, return to the saved origin while remaining in spectator with /c back, and directly spectate another player with /c follow <player>. Leaving camera mode always returns the player to the original position before restoring survival mode.",
+        "zh_cn": "允许处于安全状态的生存玩家使用 /c 进入受保护的旁观模式；使用 /c back 返回进入旁观时的位置并继续保持旁观；使用 /c follow <玩家> 直接观察指定玩家。退出旁观模式时会先返回最初保存的位置，再恢复为生存模式。"
+      }
+    },
+    {
+      "name": "noVillagerWitchConversion",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "村民雷击不变女巫"
+      },
+      "description": {
+        "en_us": "Prevents villagers from transforming into witches when struck by lightning while preserving all other vanilla lightning behavior.",
+        "zh_cn": "使村民被闪电击中时不会转化为女巫，同时保留雷击造成的其他原版效果。"
+      }
+    },
+    {
+      "name": "explosionNoBlockDamage",
+      "type": "String",
+      "default": "none",
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "爆炸不破坏方块"
+      },
+      "description": {
+        "en_us": "Prevents selected explosion types from destroying blocks while preserving entity damage, knockback, sound and particles. Use none, all for all listed types, or a comma-separated combination of creeper, tnt, tnt_minecart, end_crystal, ghast, wither and wither_skull.",
+        "zh_cn": "使指定类型的爆炸不再破坏方块。可设为 none、all（全部已列出的类型），或使用逗号组合 creeper、tnt、tnt_minecart、end_crystal、ghast、wither、wither_skull。"
+      }
+    },
+    {
+      "name": "noRespawnBlockExplosion",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "重生方块不爆炸"
+      },
+      "description": {
+        "en_us": "Prevents beds and respawn anchors from exploding in dimensions where they would normally explode, while preserving their other vanilla behavior.",
+        "zh_cn": "使床和重生锚在原本会发生爆炸的维度中不再爆炸。"
+      }
+    },
+    {
+      "name": "disableZombieSieges",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "禁用僵尸围城"
+      },
+      "description": {
+        "en_us": "Prevents village zombie sieges while leaving normal mob spawning, zombie reinforcements, raids, and other spawning mechanics unchanged.",
+        "zh_cn": "禁止村庄僵尸围城生成，同时保持普通生物生成、僵尸增援、袭击及其他生成机制不变。"
+      }
+    },
+    {
+      "name": "noAirborneMiningPenalty",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "移除悬浮挖掘惩罚"
+      },
+      "description": {
+        "en_us": "Removes the mining speed penalty applied while the player is not on the ground. Underwater mining and all other mining speed modifiers remain vanilla.",
+        "zh_cn": "移除玩家未接触地面时受到的挖掘速度惩罚。水下挖掘及其他挖掘速度修正保持原版。"
+      }
+    },
+    {
+      "name": "stonecutterCutsDeepslate",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11700,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "深板岩切石"
+      },
+      "description": {
+        "en_us": "Allows deepslate to use every stonecutting recipe available to cobbled deepslate.",
+        "zh_cn": "允许深板岩在切石机中使用深板岩圆石可用的全部切石配方。"
+      }
+    },
+    {
+      "name": "smeltConcretePowderToGlass",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "混凝土粉末烧制玻璃"
+      },
+      "description": {
+        "en_us": "Allows all 16 colors of concrete powder to be smelted in a furnace into the corresponding stained glass.",
+        "zh_cn": "允许在普通熔炉中将16种颜色的混凝土粉末烧制为对应颜色的染色玻璃。"
+      }
+    },
+    {
+      "name": "noBeeWaterDamage",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11500,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "蜜蜂免疫水伤害"
+      },
+      "description": {
+        "en_us": "Prevents bees from taking drowning damage from water while preserving water physics, AI and all other vanilla behavior.",
+        "zh_cn": "使蜜蜂接触或浸泡在水中时不再受到溺水伤害。"
+      }
+    },
+    {
+      "name": "mendingAbsorbXp",
+      "type": "boolean",
+      "default": false,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "经验修补自修复"
+      },
+      "description": {
+        "en_us": "Allows a damaged Mending item held in the offhand to periodically consume the player's stored experience for repair. Each XP repairs up to 2 durability.",
+        "zh_cn": "副手持有受损且带有经验修补附魔的物品时，会周期性消耗玩家已储存的经验进行修复。每消耗1点经验最多恢复2点耐久。"
+      }
+    }
+  ]
+}

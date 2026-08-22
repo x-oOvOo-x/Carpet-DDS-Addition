@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "name": "${name}",
+  "icon": "assets/carpet-dds-addition/icon.png",
+  "description": "A multi-version Carpet extension for technical survival, adding gameplay tweaks, quality-of-life features, renewable resources, and optimizations.",
+  "authors": ["DDS"],
+  "license": "LGPL-3.0-or-later",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["carpetddsaddition.CarpetDDSAddition"]
+  },
+  "mixins": ["carpet-dds-addition.mixins.json"],
+  "depends": {
+    "fabricloader": "${loader_dependency}",
+    "minecraft": "${minecraft_dependency}",
+    "java": "${java_dependency}",
+    "carpet": "${carpet_dependency}"
+  },
+  "custom": {
+    "modmenu:parent": "carpet"
+  }
+}

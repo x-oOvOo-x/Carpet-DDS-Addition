@@ -1,0 +1,687 @@
+import groovy.json.JsonSlurper
+
+final int mcVersion = project.mcVersion
+final boolean unobfuscated = mcVersion >= 26_00_00
+
+apply plugin: 'maven-publish'
+apply plugin: unobfuscated ? 'net.fabricmc.fabric-loom' : 'net.fabricmc.fabric-loom-remap'
+apply plugin: 'com.replaymod.preprocess'
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net/' }
+    maven {
+        url = 'https://masa.dy.fi/maven'
+        content { includeModule('carpet', 'fabric-carpet') }
+    }
+    maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup('maven.modrinth') }
+    }
+}
+
+// Loom's modImplementation/implementation are dependency configurations, not
+// Project methods. Address them by configuration name so this also works when
+// the ReplayMod preprocessor evaluates another version project recursively.
+def runtimeModConfiguration = unobfuscated ? 'implementation' : 'modImplementation'
+
+/*
+ * Shared network contracts are exercised once on the canonical DDS
+ * development target. Cross-version preprocessing/compilation remains covered
+ * by buildAll/buildAndGather.
+ */
+final boolean networkContractTestTarget =
+        project.minecraft_version == '1.21.11'
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    if (!unobfuscated) {
+        mappings loom.officialMojangMappings()
+    }
+    add(runtimeModConfiguration, "net.fabricmc:fabric-loader:${project.loader_version}")
+
+    // Prefer the creator/Masa Maven coordinate, but allow a version node to
+    // override it with an exact full dependency coordinate when an old Carpet
+    // artifact is only archived elsewhere (for example Modrinth).
+    def carpetNotation = project.findProperty('carpet_core_dependency')
+            ?: "carpet:fabric-carpet:${project.carpet_core_version}"
+    add(runtimeModConfiguration, carpetNotation)
+
+    if (networkContractTestTarget) {
+        add(
+                'testImplementation',
+                platform(
+                        'org.junit:junit-bom:5.13.4'
+                )
+        )
+
+        add(
+                'testImplementation',
+                'org.junit.jupiter:junit-jupiter'
+        )
+
+        add(
+                'testRuntimeOnly',
+                'org.junit.platform:junit-platform-launcher'
+        )
+    }
+}
+
+JavaVersion javaCompatibility
+if (mcVersion >= 26_00_00) {
+    javaCompatibility = JavaVersion.VERSION_25
+} else if (mcVersion >= 1_20_05) {
+    javaCompatibility = JavaVersion.VERSION_21
+} else if (mcVersion >= 1_18_00) {
+    javaCompatibility = JavaVersion.VERSION_17
+} else if (mcVersion >= 1_17_00) {
+    javaCompatibility = JavaVersion.VERSION_16
+} else {
+    javaCompatibility = JavaVersion.VERSION_1_8
+}
+
+/*
+ * Keep one Java-version source of truth.
+ *
+ * javaCompatibility already drives sourceCompatibility, targetCompatibility,
+ * javac --release, fabric.mod.json and Mixin compatibility. The game runtime
+ * launcher is derived from the same value so build metadata and runClient /
+ * runServer cannot silently drift apart.
+ *
+ * Do not set java.toolchain here: compilation intentionally keeps its current
+ * behavior. Only the Minecraft JavaExec run tasks use this launcher.
+ */
+final int javaLevel =
+        Integer.parseInt(javaCompatibility.majorVersion)
+
+final def gameJavaLauncher =
+        javaToolchains.launcherFor {
+            languageVersion =
+                    org.gradle.jvm.toolchain.JavaLanguageVersion.of(
+                            javaLevel
+                    )
+
+            /*
+             * Pin DDS game runtimes to Azul Zulu.
+             *
+             * Foojay otherwise prefers Temurin when vendor is unspecified.
+             * Temurin Windows archives are hosted on GitHub Releases, which
+             * is not reliably reachable from every DDS development machine.
+             *
+             * Zulu provides every Java major DDS currently requires,
+             * including historical Java 8 and Java 16 builds.
+             */
+            vendor =
+                    org.gradle.jvm.toolchain.JvmVendorSpec.AZUL
+        }
+
+// Rule definitions are source-of-truth JSON. The generator keeps old/new Carpet
+// annotation differences out of business code, so future rules are added once.
+def generatedRuleDir = layout.buildDirectory.dir('generated/sources/ddsRules/java').get().asFile
+def ruleSpecFile = rootProject.file('src/main/rules/rules.json')
+
+tasks.register('generateDDSRules') {
+    inputs.file(ruleSpecFile)
+    inputs.property('rule_api', project.rule_api)
+    outputs.dir(generatedRuleDir)
+
+    doLast {
+        delete generatedRuleDir
+
+        def spec = new JsonSlurper().parse(ruleSpecFile)
+
+        def isRuleActive = { rule ->
+            int minMc = rule.containsKey('minMc')
+                    ? (rule.minMc as int)
+                    : Integer.MIN_VALUE
+
+            int maxMc = rule.containsKey('maxMc')
+                    ? (rule.maxMc as int)
+                    : Integer.MAX_VALUE
+
+            return mcVersion >= minMc && mcVersion <= maxMc
+        }
+
+        def activeRules = spec.rules.findAll { rule ->
+            isRuleActive(rule)
+        }
+
+        def javaLiteral = { rule ->
+            switch (rule.type) {
+                case 'boolean':
+                case 'int':
+                case 'double':
+                    return rule.default.toString()
+
+                case 'String':
+                    return '"' + rule.default.toString()
+                            .replace('\\', '\\\\')
+                            .replace('"', '\\"') + '"'
+
+                default:
+                    throw new GradleException(
+                            "Unsupported DDS rule type: ${rule.type}"
+                    )
+            }
+        }
+
+        def pkgDir = new File(
+                generatedRuleDir,
+                'carpetddsaddition/generated'
+        )
+        pkgDir.mkdirs()
+
+        /*
+         * Generate CarpetDDSAdditionSettings.java
+         */
+        def f = new File(pkgDir, 'CarpetDDSAdditionSettings.java')
+        def out = new StringBuilder()
+
+        out << 'package carpetddsaddition.generated;\n\n'
+
+        if (project.rule_api == 'modern') {
+            out << 'import carpet.api.settings.Rule;\n'
+            out << 'import carpet.api.settings.RuleCategory;\n\n'
+        } else {
+            out << 'import carpet.settings.Rule;\n'
+            out << 'import carpet.settings.RuleCategory;\n\n'
+        }
+
+        out << '@SuppressWarnings({"deprecation", "removal"})\n'
+        out << 'public final class CarpetDDSAdditionSettings {\n'
+        out << '    private CarpetDDSAdditionSettings() {}\n\n'
+
+        activeRules.each { rule ->
+            def cats = (['"DDS"'] + rule.categories.collect {
+                'RuleCategory.' + it.toString().toUpperCase(Locale.ROOT)
+            }).join(', ')
+
+            if (project.rule_api == 'modern') {
+                out << '    @Rule(categories = {' + cats + '})\n'
+            } else {
+                def desc = rule.description.en_us.toString()
+                        .replace('\\', '\\\\')
+                        .replace('"', '\\"')
+
+                out << '    @Rule(desc = "' + desc + '", category = {' + cats + '})\n'
+            }
+
+            def type = rule.type
+            def value = javaLiteral(rule)
+
+            out << "    public static ${type} ${rule.name} = ${value};\n\n"
+        }
+
+        out << '}\n'
+        f.text = out.toString()
+
+        /*
+         * Generate DDSRules.java
+         */
+        def facade = new File(pkgDir, 'DDSRules.java')
+        def api = new StringBuilder()
+
+        api << 'package carpetddsaddition.generated;\n\n'
+        api << 'public final class DDSRules {\n'
+        api << '    private DDSRules() {}\n\n'
+
+        spec.rules.each { rule ->
+            api << "    public static ${rule.type} ${rule.name}() {\n"
+
+            if (isRuleActive(rule)) {
+                api << "        return CarpetDDSAdditionSettings.${rule.name};\n"
+            } else {
+                api << "        return ${javaLiteral(rule)};\n"
+            }
+
+            api << '    }\n\n'
+        }
+
+        api << '}\n'
+        facade.text = api.toString()
+
+        /*
+         * Generate DDSRuleTranslations.java
+         *
+         * displayName.zh_cn -> carpet.rule.<rule>.name
+         * description.zh_cn -> carpet.rule.<rule>.desc
+         *
+         * en_us does not generate a .name entry, so Carpet keeps displaying
+         * the internal English rule identifier in English mode.
+         */
+        def translations = new File(pkgDir, 'DDSRuleTranslations.java')
+        def tr = new StringBuilder()
+
+        tr << 'package carpetddsaddition.generated;\n\n'
+        tr << 'import java.util.HashMap;\n'
+        tr << 'import java.util.Map;\n\n'
+        tr << 'public final class DDSRuleTranslations {\n'
+        tr << '    private DDSRuleTranslations() {}\n\n'
+        tr << '    public static Map<String, String> forLanguage(String lang) {\n'
+        tr << '        Map<String, String> values = new HashMap<>();\n'
+
+        /*
+         * Collect every language appearing in description or displayName.
+         */
+        def languages = new LinkedHashSet<String>()
+
+        activeRules.each { rule ->
+            languages.addAll(
+                    rule.description.keySet().collect { it.toString() }
+            )
+
+            if (rule.containsKey('displayName')) {
+                languages.addAll(
+                        rule.displayName.keySet().collect { it.toString() }
+                )
+            }
+        }
+
+        /*
+         * English names remain the original Carpet rule IDs.
+         */
+        languages.remove('en_us')
+
+        /*
+         * Generate non-English translations.
+         */
+        languages.each { language ->
+            def escapedLanguage = language.toString()
+                    .replace('\\', '\\\\')
+                    .replace('"', '\\"')
+
+            tr << '        if ("' + escapedLanguage + '".equals(lang)) {\n'
+
+            activeRules.each { rule ->
+
+                /*
+                 * Translated rule display name.
+                 */
+                if (rule.containsKey('displayName')
+                        && rule.displayName.containsKey(language)) {
+
+                    def displayName = rule.displayName[language]
+                            .toString()
+                            .replace('\\', '\\\\')
+                            .replace('"', '\\"')
+
+                    tr << '            values.put("carpet.rule.' + rule.name + '.name", "' + displayName + '");\n'
+                }
+
+                /*
+                 * Translated description.
+                 * Fall back to en_us if this language has no description.
+                 */
+                def rawDescription = rule.description.containsKey(language)
+                        ? rule.description[language]
+                        : rule.description.en_us
+
+                def description = rawDescription.toString()
+                        .replace('\\', '\\\\')
+                        .replace('"', '\\"')
+
+                tr << '            values.put("carpet.rule.' + rule.name + '.desc", "' + description + '");\n'
+            }
+
+            tr << '            return values;\n'
+            tr << '        }\n'
+        }
+
+        /*
+         * Default / English descriptions.
+         *
+         * Do not generate .name here. Without an English name translation,
+         * Carpet displays the internal rule identifier such as petRegeneration.
+         */
+        activeRules.each { rule ->
+            def description = rule.description.en_us.toString()
+                    .replace('\\', '\\\\')
+                    .replace('"', '\\"')
+
+            tr << '        values.put("carpet.rule.' + rule.name + '.desc", "' + description + '");\n'
+        }
+
+        tr << '        return values;\n'
+        tr << '    }\n'
+        tr << '}\n'
+
+        translations.text = tr.toString()
+    }
+}
+
+tasks.named('compileJava', JavaCompile).configure {
+    dependsOn 'generateDDSRules'
+
+    // Generated rule API is target-specific build output. Compile it directly
+    // rather than adding it to main SourceSet, otherwise ReplayMod Preprocessor
+    // inherits it through the version graph and creates duplicate classes in
+    // downstream targets.
+    source(generatedRuleDir)
+}
+
+/*
+ * Tests live once in the repository root and compile against the preprocessed
+ * 1.21.11 main output.
+ *
+ * Use setSrcDirs instead of srcDir: ReplayMod Preprocessor/Loom may already
+ * configure test source locations for a version project. Appending the root
+ * directory can therefore make javac receive the same source file twice.
+ *
+ * Non-canonical targets are explicitly empty so build/buildAndGather cannot
+ * accidentally compile this shared contract suite on every Minecraft version.
+ */
+sourceSets {
+    test {
+        java.setSrcDirs(
+                networkContractTestTarget
+                        ? [
+                            rootProject.file(
+                                    'src/test/java'
+                            )
+                        ]
+                        : []
+        )
+
+        resources.setSrcDirs([])
+    }
+}
+
+if (networkContractTestTarget) {
+    tasks.named('test', Test).configure {
+        useJUnitPlatform()
+
+        javaLauncher.set(gameJavaLauncher)
+
+        systemProperty(
+                'file.encoding',
+                'UTF-8'
+        )
+    }
+}
+
+loom {
+    mixin {
+        useLegacyMixinAp = !unobfuscated
+    }
+
+    runConfigs.configureEach {
+        runDir '../../run'
+        ideConfigGenerated true
+
+        /*
+         * IDEA-generated run configurations should invoke Loom runs through
+         * Gradle so every run uses DDS's explicit JavaLauncher.
+         */
+        getPreferGradleTask().set(true)
+    }
+
+    /*
+     * Phase 7 Mixin audit runs.
+     *
+     * Keep audit runs out of IDEA's generated run configuration list. They are
+     * verification tasks rather than normal development launch profiles.
+     *
+     * Each Minecraft target gets an isolated run directory so all-version
+     * auditing cannot share world/config state between version nodes.
+     */
+    runs {
+        mixinAudit {
+            server()
+
+            runDir "../../run/mixin-audit/${project.name}/server"
+
+            vmArgs(
+                    '-Dcarpetddsaddition.mixin_audit=true'
+            )
+
+            ideConfigGenerated false
+        }
+
+        mixinAuditClient {
+            client()
+
+            runDir "../../run/mixin-audit/${project.name}/client"
+
+            vmArgs(
+                    '-Dcarpetddsaddition.mixin_audit=true'
+            )
+
+            ideConfigGenerated false
+        }
+    }
+}
+
+/*
+ * Fabric Loom's game run tasks extend JavaExec. Bind only the standard game
+ * launch tasks; the Gradle daemon itself may continue running on a different
+ * supported JDK.
+ */
+final List<String> gameRunTaskNames = [
+        'runClient',
+        'runServer',
+        'runMixinAudit',
+        'runMixinAuditClient',
+]
+
+tasks.withType(JavaExec).configureEach {
+    if (gameRunTaskNames.contains(name)) {
+        javaLauncher.set(gameJavaLauncher)
+    }
+}
+
+/*
+ * Resolve and verify the launcher without starting Minecraft.
+ *
+ * Besides checking the requested Java major, verify the actual Loom JavaExec
+ * tasks still point at the same launcher. This catches a future Loom/Gradle
+ * configuration change where gameJavaLauncher exists but runClient/runServer
+ * accidentally stop using it.
+ */
+tasks.register('verifyJavaRuntime') {
+    group = 'verification'
+
+    description =
+            "Verifies the Java ${javaLevel} runtime used by Loom game runs."
+
+    doLast {
+        def launcher
+
+        try {
+            launcher =
+                    gameJavaLauncher.get()
+        } catch (Exception ex) {
+            throw new GradleException(
+                    "Unable to resolve Java ${javaLevel} for "
+                            + "${project.path}. Check local Gradle "
+                            + "toolchains, network access and the "
+                            + "Foojay resolver configuration.",
+                    ex
+            )
+        }
+
+        int actualLevel =
+                launcher.metadata
+                        .languageVersion
+                        .asInt()
+
+        if (actualLevel != javaLevel) {
+            throw new GradleException(
+                    "Expected Java ${javaLevel} for ${project.path}, "
+                            + "resolved Java ${actualLevel}"
+            )
+        }
+
+        File gameExecutable =
+                launcher.executablePath
+                        .asFile
+                        .canonicalFile
+
+        File gameJavaHome =
+                launcher.metadata
+                        .installationPath
+                        .asFile
+                        .canonicalFile
+
+        gameRunTaskNames.each { runTaskName ->
+            JavaExec runTask =
+                    tasks.named(
+                            runTaskName,
+                            JavaExec
+                    ).get()
+
+            def runLauncher =
+                    runTask.javaLauncher
+                            .getOrNull()
+
+            if (runLauncher == null) {
+                throw new GradleException(
+                        "${project.path}:${runTaskName} has no "
+                                + "configured JavaLauncher"
+                )
+            }
+
+            int runLevel =
+                    runLauncher.metadata
+                            .languageVersion
+                            .asInt()
+
+            File runExecutable =
+                    runLauncher.executablePath
+                            .asFile
+                            .canonicalFile
+
+            if (runLevel != javaLevel
+                    || runExecutable != gameExecutable) {
+                throw new GradleException(
+                        "${project.path}:${runTaskName} is not using "
+                                + "the expected Java ${javaLevel} "
+                                + "launcher. Resolved: Java "
+                                + "${runLevel} -> ${runExecutable}"
+                )
+            }
+        }
+
+        int gradleJavaLevel =
+                Integer.parseInt(
+                        JavaVersion.current()
+                                .majorVersion
+                )
+
+        File gradleJavaHome =
+                new File(
+                        System.getProperty('java.home')
+                ).canonicalFile
+
+        /*
+         * If Gradle itself runs on another Java major, the game runtime must
+         * not resolve back to that same installation. This is the concrete
+         * invariant Phase 4 was introduced to guarantee.
+         */
+        if (gradleJavaLevel != javaLevel
+                && gradleJavaHome == gameJavaHome) {
+            throw new GradleException(
+                    "${project.path} expected isolated game Java "
+                            + "${javaLevel}, but Gradle Java "
+                            + "${gradleJavaLevel} and the game resolved "
+                            + "to the same installation: "
+                            + "${gameJavaHome}"
+            )
+        }
+
+        println(
+                "${project.path}: game Java ${actualLevel} "
+                        + "(${launcher.metadata.vendor}, "
+                        + "${launcher.metadata.jvmVersion})"
+        )
+
+        println(
+                "  game runtime : ${gameExecutable}"
+        )
+
+        println(
+                "  Gradle JVM   : Java ${gradleJavaLevel} -> "
+                        + "${gradleJavaHome}"
+        )
+
+        println(
+                "  Loom runs    : "
+                        + gameRunTaskNames.join(', ')
+                        + " [verified]"
+        )
+
+        println(
+                "  isolation    : "
+                        + (
+                            gradleJavaLevel == javaLevel
+                                    ? "same Java major; explicit launcher verified"
+                                    : "separate Java major verified"
+                        )
+        )
+    }
+}
+
+group = project.maven_group
+version = "v${project.mod_version}-mc${project.minecraft_version}"
+base.archivesName = project.archives_base_name
+
+processResources {
+    def mixinLevel = "JAVA_${javaLevel}"
+
+    def props = [
+            id                  : project.mod_id,
+            name                : project.mod_name,
+            version             : project.mod_version,
+            minecraft_dependency: project.minecraft_dependency,
+            carpet_dependency   : project.carpet_dependency,
+            loader_dependency   : project.loader_dependency,
+            java_dependency     : ">=${javaLevel}",
+            mixin_compatibility : mixinLevel,
+    ]
+
+    inputs.properties(props)
+
+    filesMatching('fabric.mod.json') {
+        expand(props)
+    }
+
+    filesMatching('carpet-dds-addition.mixins.json') {
+        expand(props)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = Integer.parseInt(javaCompatibility.majorVersion)
+    options.compilerArgs += [
+            '-Xlint:deprecation',
+            '-Xlint:unchecked'
+    ]
+}
+
+java {
+    sourceCompatibility = javaCompatibility
+    targetCompatibility = javaCompatibility
+    withSourcesJar()
+}
+
+jar {
+    from(rootProject.file('LICENSE')) {
+        rename {
+            "${it}_${project.archives_base_name}"
+        }
+    }
+
+    manifest {
+        attributes(
+                'Implementation-Title': project.mod_name,
+                'Implementation-Version': project.mod_version,
+                'Minecraft-Target': project.minecraft_dependency
+        )
+    }
+}
+
+if (!unobfuscated) {
+    tasks.named('build').configure {
+        dependsOn tasks.named('remapJar')
+    }
+}

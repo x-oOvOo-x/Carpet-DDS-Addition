@@ -1,0 +1,36 @@
+# Gradle
+.gradle/
+**/build/
+build/
+
+# Minecraft runtime
+run/
+**/run/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+out/
+
+# VS Code
+.vscode/
+
+# Logs and crash reports
+*.log
+logs/
+crash-reports/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# JVM crash files
+hs_err_pid*
+
+_backup_*/
