@@ -12,7 +12,7 @@ from pathlib import Path
 
 API_BASE = "https://minecraft.curseforge.com"
 USER_AGENT = "x-oOvOo-x/Carpet-DDS-Addition GitHub-Actions"
-CARPET_PROJECT_ID = "349239"
+CARPET_PROJECT_ID = 349239
 
 
 def request_json(url, token, method="GET", data=None, headers=None):
