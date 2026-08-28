@@ -38,10 +38,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: [self-hosted, Windows, X64]
-    defaults:
-      run:
-        shell: cmd
+    runs-on: ${{ fromJSON(github.repository == 'x-oOvOo-x/Carpet-DDS-Addition-Dev' && '["self-hosted","Windows","X64"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 25
@@ -51,12 +48,34 @@ jobs:
           java-version: '25'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Validate release publisher scripts
+      - name: Ensure Gradle wrapper is executable
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: chmod +x gradlew
+      - name: Validate release publisher scripts (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: cmd
         run: py -3 -m py_compile scripts/publish-modrinth.py scripts/publish-curseforge.py
-      - name: Verify and build every Minecraft node
+      - name: Validate release publisher scripts (Linux)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: python3 -m py_compile scripts/publish-modrinth.py scripts/publish-curseforge.py
+      - name: Verify and build every Minecraft node (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: cmd
         run: gradlew.bat buildAndGather --stacktrace
-      - name: Verify preprocessor round-trip
+      - name: Verify and build every Minecraft node (Linux)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: ./gradlew buildAndGather --stacktrace
+      - name: Verify preprocessor round-trip (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        shell: cmd
         run: py -3 scripts/verify-preprocessor-roundtrip.py --skip-build
+      - name: Verify preprocessor round-trip (Linux)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        run: python3 scripts/verify-preprocessor-roundtrip.py --skip-build
       - name: Upload release jars
         uses: actions/upload-artifact@v4
         with:
