@@ -12,6 +12,11 @@ jobs:
   release:
     if: github.repository == 'x-oOvOo-x/Carpet-DDS-Addition'
     runs-on: ubuntu-latest
+    env:
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+      MODRINTH_PROJECT_SLUG: ${{ vars.MODRINTH_PROJECT_SLUG }}
+      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+      CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
 
     steps:
       - name: Check out tagged source
@@ -33,29 +38,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           MOD_VERSION="$(sed -n 's/^mod_version=//p' gradle.properties | tr -d '\r')"
-
           if [[ -z "$MOD_VERSION" ]]; then
             echo "mod_version was not found in gradle.properties"
             exit 1
           fi
-
           EXPECTED_TAG="v${MOD_VERSION}"
-
           if [[ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]]; then
             echo "Tag ${GITHUB_REF_NAME} does not match mod_version=${MOD_VERSION}"
             echo "Expected tag: ${EXPECTED_TAG}"
             exit 1
           fi
-
           RELEASE_NOTES="docs/release-notes/${GITHUB_REF_NAME}.md"
-
           if [[ ! -f "${RELEASE_NOTES}" ]]; then
             echo "Release notes not found: ${RELEASE_NOTES}"
             exit 1
           fi
-
           echo "MOD_VERSION=${MOD_VERSION}" >> "$GITHUB_ENV"
           echo "RELEASE_NOTES=${RELEASE_NOTES}" >> "$GITHUB_ENV"
 
@@ -74,7 +72,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             gh release create "${GITHUB_REF_NAME}" \
               --verify-tag \
@@ -85,16 +82,10 @@ jobs:
               --title "Carpet DDS Addition ${MOD_VERSION}" \
               --notes-file "${RELEASE_NOTES}"
           fi
-
-          gh release upload \
-            "${GITHUB_REF_NAME}" \
-            build/releases/*.jar \
-            --clobber
+          gh release upload "${GITHUB_REF_NAME}" build/releases/*.jar --clobber
 
       - name: Publish versions to Modrinth
-        env:
-          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-          MODRINTH_PROJECT_SLUG: ${{ vars.MODRINTH_PROJECT_SLUG }}
+        if: ${{ env.MODRINTH_TOKEN != '' && env.MODRINTH_PROJECT_SLUG != '' }}
         run: |
           python3 scripts/publish-modrinth.py \
             --project "${MODRINTH_PROJECT_SLUG}" \
@@ -103,10 +94,12 @@ jobs:
             --config scripts/modrinth-versions.json \
             --changelog-file "${RELEASE_NOTES}"
 
+      - name: Skip Modrinth publishing
+        if: ${{ env.MODRINTH_TOKEN == '' || env.MODRINTH_PROJECT_SLUG == '' }}
+        run: echo "Skipping Modrinth because its token/project is not configured."
+
       - name: Publish versions to CurseForge
-        env:
-          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
-          CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
+        if: ${{ always() && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
         run: |
           python3 scripts/publish-curseforge.py \
             --project "${CURSEFORGE_PROJECT_ID}" \
@@ -114,3 +107,7 @@ jobs:
             --release-dir build/releases \
             --config scripts/modrinth-versions.json \
             --changelog-file "${RELEASE_NOTES}"
+
+      - name: Skip CurseForge publishing
+        if: ${{ always() && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
+        run: echo "Skipping CurseForge because its token/project is not configured."
