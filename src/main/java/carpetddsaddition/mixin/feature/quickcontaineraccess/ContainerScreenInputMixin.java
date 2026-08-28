@@ -7,6 +7,7 @@
 package carpetddsaddition.mixin.feature.quickcontaineraccess;
 
 import carpetddsaddition.feature.quickcontaineraccess.QuickContainerAccess;
+import carpetddsaddition.feature.quickcontaineraccess.compat.QuickContainerAccessClient;
 import carpetddsaddition.feature.quickcontaineraccess.compat.QuickContainerAccessItems;
 import carpetddsaddition.feature.quickcontaineraccess.network.QuickContainerAccessClientNetwork;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -18,14 +19,17 @@ import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.HashSet;
 import java.util.Set;
 //#if MC >= 12109
+//$$ import net.minecraft.client.input.KeyEvent;
 //$$ import net.minecraft.client.input.MouseButtonEvent;
 //#endif
 //#endif
@@ -36,9 +40,28 @@ public abstract class ContainerScreenInputMixin {
     @Shadow @Final protected AbstractContainerMenu menu;
     @Shadow protected int leftPos;
     @Shadow protected int topPos;
-    @Unique private boolean dds$storageRightDown;
-    @Unique private boolean dds$absorbDragging;
-    @Unique private final Set<Integer> dds$visitedAbsorbSlots = new HashSet<>();
+    @Unique private boolean dds$storageRightDown, dds$creativeStorageGesture;
+    @Unique private QuickContainerAccessClient.StorageDragMode dds$storageDragMode;
+    @Unique private final Set<Integer> dds$visitedStorageSlots = new HashSet<>();
+
+    //#if MC >= 11602
+    //$$ @Inject(method = "onClose", at = @At("HEAD"), cancellable = true)
+    //$$ private void dds$navigateBackOnClose(CallbackInfo ci) {
+    //$$     if (QuickContainerAccessClientNetwork.sendNavigateBack(menu)) ci.cancel();
+    //$$ }
+    //#endif
+
+    //#if MC >= 12109
+    //$$ @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    //$$ private void dds$navigateBackOnEscape(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
+    //$$     if (event.key() == GLFW.GLFW_KEY_ESCAPE && QuickContainerAccessClientNetwork.sendNavigateBack(menu)) cir.setReturnValue(true);
+    //$$ }
+    //#else
+    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    private void dds$navigateBackOnEscape(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE && QuickContainerAccessClientNetwork.sendNavigateBack(menu)) cir.setReturnValue(true);
+    }
+    //#endif
 
     //#if MC >= 12109
     //$$ @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
@@ -46,8 +69,7 @@ public abstract class ContainerScreenInputMixin {
     //$$     if (dds$handleMouseClicked(event.x(), event.y(), event.button())) cir.setReturnValue(true);
     //$$ }
     //$$ @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true)
-    //$$ private void dds$mouseDragged(MouseButtonEvent event, double dragX, double dragY,
-    //$$                               CallbackInfoReturnable<Boolean> cir) {
+    //$$ private void dds$mouseDragged(MouseButtonEvent event, double dragX, double dragY, CallbackInfoReturnable<Boolean> cir) {
     //$$     if (dds$handleMouseDragged(event.x(), event.y(), event.button())) cir.setReturnValue(true);
     //$$ }
     //$$ @Inject(method = "mouseReleased", at = @At("HEAD"), cancellable = true)
@@ -70,76 +92,90 @@ public abstract class ContainerScreenInputMixin {
     }
     //#endif
 
-    @Unique
-    private boolean dds$handleMouseClicked(double mouseX, double mouseY, int button) {
+    @Unique private boolean dds$handleMouseClicked(double mouseX, double mouseY, int button) {
+        Minecraft minecraft = Minecraft.getInstance(); if (minecraft.player == null) return false;
+        boolean creativeScreen = (Object) this instanceof CreativeModeInventoryScreen;
+        if (creativeScreen && QuickContainerAccessClientNetwork.creativeStoragePending(menu)) return true;
         if (button == 1) dds$resetGesture();
-        if (!QuickContainerAccess.enabled() || !QuickContainerAccessClientNetwork.canUseStorageClick()
-                || button != 1 || (Object) this instanceof CreativeModeInventoryScreen) return false;
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null) return false;
+        if (!QuickContainerAccess.enabled() || button != 1) return false;
         //#if MC >= 11701
         //$$ ItemStack carried = menu.getCarried();
         //#else
         ItemStack carried = minecraft.player.inventory.getCarried();
         //#endif
-        if (!QuickContainerAccessItems.isStorageHostCandidate(carried)) return false;
         Slot slot = dds$getSlot(mouseX, mouseY);
-        if (slot == null) return false;
-        //#if MC >= 11701
-        //$$ if (slot.container != minecraft.player.getInventory()) return false;
-        //#else
-        if (slot.container != minecraft.player.inventory) return false;
-        //#endif
+        if (creativeScreen && QuickContainerAccessClient.isCreativePickerScreen()) return false;
+        if (carried.isEmpty()) {
+            if (creativeScreen) {
+                int inventorySlot = QuickContainerAccessClient.creativeInventoryOpenSlot(slot, minecraft.player);
+                if (inventorySlot >= 0 && QuickContainerAccessClientNetwork.sendOpenInventorySlot(inventorySlot)) return true;
+            } else if (QuickContainerAccessClient.canUseDedicatedOpenSlot(slot, minecraft.player)) {
+                int slotId = menu.slots.indexOf(slot);
+                if (slotId >= 0 && QuickContainerAccessClientNetwork.sendOpenSlot(menu, slotId)) return true;
+            }
+        }
+        if (creativeScreen) {
+            int inventorySlot = QuickContainerAccessClient.creativeInventoryStorageSlot(slot, minecraft.player, carried);
+            if (inventorySlot < 0) return false;
+            QuickContainerAccessClientNetwork.beginCreativeStorageGesture();
+            if (!QuickContainerAccessClientNetwork.sendCreativeStorageSlot(inventorySlot, minecraft.player, menu, carried)) return false;
+            if (QuickContainerAccessItems.isStorageHostCandidate(carried)) {
+                dds$creativeStorageGesture = dds$storageRightDown = true;
+                dds$storageDragMode = slot.getItem().isEmpty()
+                        ? QuickContainerAccessClient.StorageDragMode.EXTRACT : QuickContainerAccessClient.StorageDragMode.ABSORB;
+                dds$visitedStorageSlots.add(inventorySlot);
+            }
+            return true;
+        }
+        if (!QuickContainerAccessClientNetwork.canUseStorageClick()
+                || !QuickContainerAccessClient.canUseDedicatedStorageInteraction(slot, minecraft.player, carried)) return false;
         int slotId = menu.slots.indexOf(slot);
         if (slotId < 0 || !QuickContainerAccessClientNetwork.sendStorageClick(menu.containerId, slotId)) return false;
         dds$storageRightDown = true;
-        dds$absorbDragging = !slot.getItem().isEmpty();
-        dds$visitedAbsorbSlots.clear();
-        if (dds$absorbDragging) dds$visitedAbsorbSlots.add(slotId);
+        dds$storageDragMode = slot.getItem().isEmpty()
+                ? QuickContainerAccessClient.StorageDragMode.EXTRACT : QuickContainerAccessClient.StorageDragMode.ABSORB;
+        dds$visitedStorageSlots.add(slotId);
         return true;
     }
 
-    @Unique
-    private boolean dds$handleMouseDragged(double mouseX, double mouseY, int button) {
+    @Unique private boolean dds$handleMouseDragged(double mouseX, double mouseY, int button) {
         if (!dds$storageRightDown || button != 1) return false;
-        if (!dds$absorbDragging) return true;
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || !QuickContainerAccess.enabled()
-                || !QuickContainerAccessClientNetwork.canUseStorageClick()) return true;
+        if (dds$storageDragMode == null) return true;
+        Minecraft minecraft = Minecraft.getInstance(); if (minecraft.player == null || !QuickContainerAccess.enabled()) return true;
         //#if MC >= 11701
         //$$ ItemStack carried = menu.getCarried();
         //#else
         ItemStack carried = minecraft.player.inventory.getCarried();
         //#endif
-        if (!QuickContainerAccessItems.isStorageHostCandidate(carried)) return true;
         Slot slot = dds$getSlot(mouseX, mouseY);
-        if (slot == null) return true;
-        //#if MC >= 11701
-        //$$ if (slot.container != minecraft.player.getInventory()) return true;
-        //#else
-        if (slot.container != minecraft.player.inventory) return true;
-        //#endif
+        if (dds$creativeStorageGesture) {
+            if (!QuickContainerAccessClient.isCreativeSurvivalScreen()) { dds$resetGesture(); return false; }
+            int inventorySlot = QuickContainerAccessClient.creativeInventoryStorageSlot(slot, minecraft.player, carried);
+            if (inventorySlot < 0 || dds$visitedStorageSlots.contains(inventorySlot)) return true;
+            boolean empty = slot.getItem().isEmpty();
+            if (dds$storageDragMode == QuickContainerAccessClient.StorageDragMode.ABSORB ? empty : !empty) return true;
+            if (QuickContainerAccessClientNetwork.sendCreativeStorageSlot(inventorySlot, minecraft.player, menu, carried))
+                dds$visitedStorageSlots.add(inventorySlot);
+            return true;
+        }
+        if (!QuickContainerAccessClientNetwork.canUseStorageClick()) return true;
+        if (!QuickContainerAccessClient.canUseDedicatedStorageInteraction(slot, minecraft.player, carried)) return true;
+        boolean empty = slot.getItem().isEmpty();
+        if (dds$storageDragMode == QuickContainerAccessClient.StorageDragMode.ABSORB ? empty : !empty) return true;
         int slotId = menu.slots.indexOf(slot);
-        if (slotId < 0 || !dds$visitedAbsorbSlots.add(slotId) || slot.getItem().isEmpty()) return true;
-        QuickContainerAccessClientNetwork.sendStorageClick(menu.containerId, slotId);
+        if (slotId < 0 || dds$visitedStorageSlots.contains(slotId)) return true;
+        if (QuickContainerAccessClientNetwork.sendStorageClick(menu.containerId, slotId)) dds$visitedStorageSlots.add(slotId);
         return true;
     }
 
-    @Unique
-    private boolean dds$handleMouseReleased(int button) {
+    @Unique private boolean dds$handleMouseReleased(int button) {
         if (!dds$storageRightDown || button != 1) return false;
-        dds$resetGesture();
-        return true;
+        dds$resetGesture(); return true;
     }
-
-    @Unique
-    private void dds$resetGesture() {
-        dds$storageRightDown = dds$absorbDragging = false;
-        dds$visitedAbsorbSlots.clear();
+    @Unique private void dds$resetGesture() {
+        dds$storageRightDown = dds$creativeStorageGesture = false; dds$storageDragMode = null; dds$visitedStorageSlots.clear();
     }
-
-    @Unique
-    private Slot dds$getSlot(double mouseX, double mouseY) {
+    @Unique private Slot dds$getSlot(double mouseX, double mouseY) {
         double x = mouseX - leftPos, y = mouseY - topPos;
         for (Slot slot : menu.slots)
             if (x >= slot.x && x < slot.x + 16 && y >= slot.y && y < slot.y + 16) return slot;

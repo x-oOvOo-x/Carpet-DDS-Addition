@@ -7,14 +7,21 @@
 package carpetddsaddition.integration.gca.fakeplayer;
 
 //#if MC >= 11902 && MC <= 260200
+//$$ import carpetddsaddition.core.inventory.DdsDirectSlotAccess;
+//$$ import carpetddsaddition.core.inventory.DdsInventoryOwnerView;
+//$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.world.Container;
 //$$ import net.minecraft.world.entity.player.Player;
 //$$ import net.minecraft.world.item.ItemStack;
 //$$
-//$$ final class DdsMappedContainer implements Container {
-//$$     private final Container delegate;
+//$$ final class DdsMappedContainer implements Container, DdsDirectSlotAccess, DdsInventoryOwnerView {
+//$$     private final Container delegate, canonical;
 //$$     private final int[] indices;
-//$$     DdsMappedContainer(Container delegate, int[] indices) { this.delegate = delegate; this.indices = indices.clone(); }
+//$$     private final ServerPlayer owner;
+//$$     DdsMappedContainer(Container delegate, int[] indices) { this(delegate, indices, null, null); }
+//$$     DdsMappedContainer(Container delegate, int[] indices, ServerPlayer owner, Container canonical) {
+//$$         this.delegate = delegate; this.indices = indices.clone(); this.owner = owner; this.canonical = canonical;
+//$$     }
 //$$     @Override public int getContainerSize() { return indices.length; }
 //$$     @Override public boolean isEmpty() { for (int index : indices) if (!delegate.getItem(index).isEmpty()) return false; return true; }
 //$$     @Override public ItemStack getItem(int slot) { return delegate.getItem(indices[slot]); }
@@ -28,7 +35,10 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$     @Override public void setChanged() { delegate.setChanged(); }
 //$$     @Override public boolean stillValid(Player player) { return delegate.stillValid(player); }
 //$$     @Override public boolean canPlaceItem(int slot, ItemStack stack) { return delegate.canPlaceItem(indices[slot], stack); }
-//$$     @Override public void clearContent() { for (int index : indices) delegate.setItem(index, ItemStack.EMPTY); }
+//$$     @Override public void clearContent() { for (int index : indices) delegate.setItem(index, ItemStack.EMPTY); delegate.setChanged(); }
+//$$     @Override public boolean ddsAllowsDirectSlotAccess(int slot) { return slot >= 0 && slot < indices.length; }
+//$$     @Override public ServerPlayer ddsInventoryOwner() { return owner; }
+//$$     @Override public Container ddsCanonicalContainer() { return canonical; }
 //$$ }
 //#else
 public final class DdsMappedContainer { private DdsMappedContainer() {} }

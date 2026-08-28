@@ -28,12 +28,12 @@ import carpetddsaddition.feature.nobeewaterdamage.NoBeeWaterDamage;
 //$$ import net.minecraft.world.damagesource.DamageTypes;
 //#endif
 //#if MC >= 11500
-//$$ import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageSource;
 //#endif
 //#if MC >= 12111
 //$$ import net.minecraft.world.entity.animal.bee.Bee;
 //#elseif MC >= 11500
-//$$ import net.minecraft.world.entity.animal.Bee;
+import net.minecraft.world.entity.animal.Bee;
 //#endif
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
@@ -42,10 +42,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 //#if MC >= 11500
-//$$ @Mixin(Bee.class)
+@Mixin(Bee.class)
 //#else
-@Pseudo
-@Mixin(targets = "net.minecraft.world.entity.animal.Bee")
+//$$ @Pseudo
+//$$ @Mixin(targets = "net.minecraft.world.entity.animal.Bee")
 //#endif
 public abstract class BeeMixin {
     //#if MC >= 12102
@@ -58,19 +58,19 @@ public abstract class BeeMixin {
     //$$     if (NoBeeWaterDamage.enabled() && carpetDDSAddition$isDrowningDamage(source)) cir.setReturnValue(false);
     //$$ }
     //#elseif MC >= 11500
-    //$$ @Inject(
-    //$$         method = "hurt",
-    //$$         at = @At("HEAD"),
-    //$$         cancellable = true
-    //$$ )
-    //$$ private void carpetDDSAddition$noBeeWaterDamage(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-    //$$     if (NoBeeWaterDamage.enabled() && carpetDDSAddition$isDrowningDamage(source)) cir.setReturnValue(false);
-    //$$ }
+    @Inject(
+            method = "hurt",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void carpetDDSAddition$noBeeWaterDamage(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        if (NoBeeWaterDamage.enabled() && carpetDDSAddition$isDrowningDamage(source)) cir.setReturnValue(false);
+    }
     //#endif
 
     //#if MC >= 11904
     //$$ private static boolean carpetDDSAddition$isDrowningDamage(DamageSource source) { return source.is(DamageTypes.DROWN); }
     //#elseif MC >= 11500
-    //$$ private static boolean carpetDDSAddition$isDrowningDamage(DamageSource source) { return source == DamageSource.DROWN; }
+    private static boolean carpetDDSAddition$isDrowningDamage(DamageSource source) { return source == DamageSource.DROWN; }
     //#endif
 }

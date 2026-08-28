@@ -9,6 +9,7 @@ package carpetddsaddition.core.bootstrap;
 import carpetddsaddition.feature.quickcontaineraccess.network.QuickContainerAccessServerNetwork;
 import carpetddsaddition.feature.undoredo.network.UndoRedoServerNetwork;
 import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerServerNetwork;
+import carpetddsaddition.network.DdsPacketRegistry;
 
 /** Composition root for feature and integration packet registration. */
 public final class DdsNetworkBootstrap {
@@ -20,6 +21,7 @@ public final class DdsNetworkBootstrap {
         QuickContainerAccessServerNetwork.registerPackets();
         UndoRedoServerNetwork.registerPackets();
         DdsFakePlayerServerNetwork.registerPackets();
+        DdsPacketRegistry.freeze();
         initialized = true;
     }
 }

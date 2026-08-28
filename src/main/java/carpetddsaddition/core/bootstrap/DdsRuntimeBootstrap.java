@@ -13,12 +13,16 @@ import carpetddsaddition.feature.commandcamera.CommandCameraLifecycle;
 import carpetddsaddition.feature.directblockdrops.DirectBlockDrops;
 import carpetddsaddition.feature.directblockdrops.DirectBlockDropsLifecycle;
 import carpetddsaddition.feature.enhancednametag.EnhancedNameTagLifecycle;
+import carpetddsaddition.feature.mendingabsorbxp.MendingAbsorbXpLifecycle;
 import carpetddsaddition.feature.quickcontaineraccess.QuickContainerAccess;
 import carpetddsaddition.feature.quickcontaineraccess.QuickContainerAccessLifecycle;
 import carpetddsaddition.feature.stonecuttercutsdeepslate.StonecutterCutsDeepslate;
 import carpetddsaddition.feature.stonecuttercutsdeepslate.StonecutterCutsDeepslateLifecycle;
+import carpetddsaddition.feature.stonecuttercutswood.StonecutterCutsWood;
+import carpetddsaddition.feature.stonecuttercutswood.StonecutterCutsWoodLifecycle;
 import carpetddsaddition.feature.undoredo.UndoRedo;
 import carpetddsaddition.generated.DDSRules;
+import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerAccess;
 import carpetddsaddition.network.DdsNetworkLifecycle;
 import carpetddsaddition.network.DdsServerNetwork;
 
@@ -30,17 +34,19 @@ public final class DdsRuntimeBootstrap {
     public static synchronized void initialize() {
         if (initialized) return;
         DdsLifecycle.configure(
-                DdsRuleEventsLifecycle.INSTANCE, DdsNetworkLifecycle.INSTANCE, DirectBlockDropsLifecycle.INSTANCE,
-                QuickContainerAccessLifecycle.INSTANCE, CommandCameraLifecycle.INSTANCE, EnhancedNameTagLifecycle.INSTANCE,
-                StonecutterCutsDeepslateLifecycle.INSTANCE
+                DdsRuleEventsLifecycle.INSTANCE,DdsNetworkLifecycle.INSTANCE,DirectBlockDropsLifecycle.INSTANCE,
+                MendingAbsorbXpLifecycle.INSTANCE,QuickContainerAccessLifecycle.INSTANCE,CommandCameraLifecycle.INSTANCE,
+                EnhancedNameTagLifecycle.INSTANCE,StonecutterCutsDeepslateLifecycle.INSTANCE,StonecutterCutsWoodLifecycle.INSTANCE
         );
         DdsRuleEvents.configure(
-                DdsRuleEvents.observe(DDSRules::stonecutterCutsDeepslate, server -> StonecutterCutsDeepslate.refresh(server, false)),
-                DdsRuleEvents.observe(DDSRules::ddsNetworkProtocol, DdsServerNetwork::syncProtocolRuleState),
-                DdsRuleEvents.observe(DDSRules::directBlockDrops, server -> DirectBlockDrops.onRuleChanged()),
-                DdsRuleEvents.observe(DDSRules::quickContainerAccess, server -> QuickContainerAccess.onRuleChanged()),
-                DdsRuleEvents.observe(DDSRules::undoRedo, server -> UndoRedo.onRuleChanged())
+                DdsRuleEvents.observe(DDSRules::stonecutterCutsDeepslate,server->StonecutterCutsDeepslate.refresh(server,false)),
+                StonecutterCutsWood.ruleObserver(),
+                DdsRuleEvents.observe(DDSRules::ddsNetworkProtocol,DdsServerNetwork::syncProtocolRuleState),
+                DdsRuleEvents.observe(DDSRules::directBlockDrops,server->DirectBlockDrops.onRuleChanged()),
+                DdsRuleEvents.observe(DDSRules::quickContainerAccess,server->QuickContainerAccess.onRuleChanged()),
+                DdsRuleEvents.observe(DDSRules::fakePlayerInventory,DdsFakePlayerAccess::onRuleChanged),
+                DdsRuleEvents.observe(DDSRules::undoRedo,server->UndoRedo.onRuleChanged())
         );
-        initialized = true;
+        initialized=true;
     }
 }

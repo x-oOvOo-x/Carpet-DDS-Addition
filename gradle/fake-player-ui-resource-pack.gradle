@@ -1,0 +1,98 @@
+/*
+ * Adds CozyUI+ as the optional DDS fake-player UI built-in resource pack.
+ * The default DDS UI remains bundled as normal mod assets and is unchanged;
+ * CozyUI+ stays disabled until selected in Minecraft's resource-pack screen.
+ */
+afterEvaluate {
+    final String minecraftVersion = project.findProperty('minecraft_version')?.toString()
+    final Map<String, Integer> packFormats = [
+            '1.19.2': 9, '1.19.3': 12, '1.19.4': 13,
+            '1.20.1': 15, '1.20.2': 18, '1.20.4': 22, '1.20.6': 32,
+            '1.21.1': 34, '1.21.3': 42, '1.21.4': 46, '1.21.5': 55,
+            '1.21.8': 64, '1.21.9': 69, '1.21.10': 69, '1.21.11': 75,
+            '26.1.2': 84, '26.2': 88,
+    ]
+    final Map<String, String> fabricApiVersions = [
+            '1.19.2': '0.76.1+1.19.2', '1.19.3': '0.76.0+1.19.3', '1.19.4': '0.87.0+1.19.4',
+            '1.20.1': '0.92.2+1.20.1', '1.20.2': '0.91.2+1.20.2', '1.20.4': '0.97.2+1.20.4', '1.20.6': '0.100.8+1.20.6',
+            '1.21.1': '0.116.14+1.21.1', '1.21.3': '0.114.1+1.21.3', '1.21.4': '0.119.4+1.21.4', '1.21.5': '0.128.2+1.21.5',
+            '1.21.8': '0.136.1+1.21.8', '1.21.9': '0.134.1+1.21.9', '1.21.10': '0.138.4+1.21.10', '1.21.11': '0.141.3+1.21.11',
+            '26.1.2': '0.151.0+26.1.2', '26.2': '0.156.0+26.2',
+    ]
+    final Integer packFormat = packFormats[minecraftVersion]
+    final String fabricApiVersion = fabricApiVersions[minecraftVersion]
+    if (packFormat == null || fabricApiVersion == null) return
+
+    final String runtimeConfiguration = (project.mcVersion as int) >= 26_00_00 ? 'implementation' : 'modImplementation'
+    ['fabric-api-base', 'fabric-resource-loader-v0'].each { moduleName ->
+        def module = project.fabricApi.module(moduleName, fabricApiVersion)
+        dependencies.add(runtimeConfiguration, module)
+        dependencies.add('include', module)
+    }
+
+    final String packPath = 'resourcepacks/dds_fake_player_ui'
+    final File packSource = rootProject.file('src/main/resourcepacks/dds_fake_player_ui')
+    final def metaDir = layout.buildDirectory.dir('generated/fake-player-ui-builtin/meta')
+    final def preparePackMeta = tasks.register('prepareFakePlayerUiResourcePack') {
+        inputs.property('minecraftVersion', minecraftVersion)
+        inputs.property('packFormat', packFormat)
+        outputs.dir(metaDir)
+        doLast {
+            File out = metaDir.get().asFile
+            project.delete(out); out.mkdirs()
+            String packSection = packFormat >= 65
+                    ? "\"description\": \"DDS Fake Player UI - CozyUI+ (MC ${minecraftVersion})\",\n    \"min_format\": ${packFormat},\n    \"max_format\": ${packFormat}"
+                    : "\"pack_format\": ${packFormat},\n    \"description\": \"DDS Fake Player UI - CozyUI+ (MC ${minecraftVersion})\""
+            new File(out, 'pack.mcmeta').setText("{\n  \"pack\": {\n    ${packSection}\n  }\n}\n", 'UTF-8')
+            new File(out, 'README.txt').setText("""DDS Fake Player UI - CozyUI+ optional built-in resource pack
+Minecraft: ${minecraftVersion}
+
+This optional pack provides the CozyUI+ theme for DDS fake-player inventory screens.
+It is disabled by default. Enable dds_fake_player_ui in Options -> Resource Packs
+to use CozyUI+.
+
+The default DDS UI assets remain unchanged and are used whenever this optional
+pack is disabled. External packs can override the same carpet-dds-addition
+namespace according to normal resource-pack priority.
+
+Editable DDS assets:
+assets/carpet-dds-addition/textures/gui/container/gca_fake_player_inventory.png
+assets/carpet-dds-addition/textures/gui/container/gca_fake_player_ender_chest_3.png
+assets/carpet-dds-addition/textures/gui/container/gca_fake_player_ender_chest_6.png
+assets/carpet-dds-addition/textures/gui/gca/action_button_normal.png
+assets/carpet-dds-addition/textures/gui/gca/action_button_hover.png
+assets/carpet-dds-addition/textures/gui/gca/action_button_active.png
+assets/carpet-dds-addition/textures/gui/gca/action_icons.png
+assets/carpet-dds-addition/textures/gui/gca/hotbar_number_buttons.png
+assets/carpet-dds-addition/textures/gui/gca/hotbar_selected.png
+assets/carpet-dds-addition/textures/gui/gca/interval_arrows.png
+assets/carpet-dds-addition/textures/gui/gca/interval_input.png
+assets/carpet-dds-addition/textures/gui/gca/interval_input_focused.png
+
+Layout contract:
+action hitbox: 18x18 logical
+action visual: 20x20 logical, rendered at (-1,-1) around the hitbox
+4X action background source: 80x80 -> 20x20 logical
+button icons: ten 16x16 logical cells in action_icons.png
+hotbar selector: nine 18x6 logical cells x three states
+icon order: attack interval, attack continuous, use interval, use continuous,
+stop, drop, disconnect, store, take, sneak.
+
+No fake-player action button uses a Minecraft item texture or item model.
+""", 'UTF-8')
+        }
+    }
+
+    tasks.named('processResources').configure {
+        dependsOn(preparePackMeta)
+        from(metaDir) { into packPath }
+        from(packSource) {
+            include 'assets/**'
+            into packPath
+        }
+        from(rootProject.file('src/main/resources/assets/carpet-dds-addition/icon.png')) {
+            rename { 'pack.png' }
+            into packPath
+        }
+    }
+}

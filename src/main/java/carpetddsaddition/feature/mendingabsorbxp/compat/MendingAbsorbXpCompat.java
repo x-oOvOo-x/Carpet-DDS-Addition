@@ -22,7 +22,7 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 /** Minecraft-version adapter for mendingAbsorbXp. */
 public final class MendingAbsorbXpCompat {
     private static final float REPAIR_SOUND_VOLUME = 0.25F, REPAIR_SOUND_PITCH = 1.20F;
-    private static final float FINISHED_SOUND_VOLUME = 0.45F, FINISHED_SOUND_PITCH = 1.60F;
+    private static final float FINISHED_SOUND_VOLUME = 0.45F, FINISHED_SOUND_PITCH = 1.00F;
     private MendingAbsorbXpCompat() {}
 
     public static boolean isSurvival(ServerPlayer player) {
@@ -44,23 +44,27 @@ public final class MendingAbsorbXpCompat {
     }
 
     public static void playFeedback(ServerPlayer player, boolean finished) {
-        playSound(player, finished ? FINISHED_SOUND_VOLUME : REPAIR_SOUND_VOLUME,
+        playSound(player, finished, finished ? FINISHED_SOUND_VOLUME : REPAIR_SOUND_VOLUME,
                 finished ? FINISHED_SOUND_PITCH : REPAIR_SOUND_PITCH);
     }
 
-    private static void playSound(ServerPlayer player, float volume, float pitch) {
+    private static void playSound(ServerPlayer player, boolean finished, float volume, float pitch) {
         //#if MC >= 12000
-        //$$ player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
-        //$$         SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, volume, pitch);
+        //$$ player.serverLevel().playSound(null, player.getX(), player.getY(), player.getZ(),
+        //$$         finished ? SoundEvents.PLAYER_LEVELUP : SoundEvents.EXPERIENCE_ORB_PICKUP,
+        //$$         SoundSource.PLAYERS, volume, pitch);
         //#elseif MC >= 11902
         //$$ player.level.playSeededSound(null, player.getX(), player.getY(), player.getZ(),
-        //$$         SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, volume, pitch, player.getRandom().nextLong());
+        //$$         finished ? SoundEvents.PLAYER_LEVELUP : SoundEvents.EXPERIENCE_ORB_PICKUP,
+        //$$         SoundSource.PLAYERS, volume, pitch, player.getRandom().nextLong());
         //#elseif MC >= 11601
         //$$ player.level.playSound(null, player.getX(), player.getY(), player.getZ(),
-        //$$         SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, volume, pitch);
+        //$$         finished ? SoundEvents.PLAYER_LEVELUP : SoundEvents.EXPERIENCE_ORB_PICKUP,
+        //$$         SoundSource.PLAYERS, volume, pitch);
         //#else
         player.level.playSound(null, player.position().x, player.position().y, player.position().z,
-                SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.PLAYERS, volume, pitch);
+                finished ? SoundEvents.PLAYER_LEVELUP : SoundEvents.EXPERIENCE_ORB_PICKUP,
+                SoundSource.PLAYERS, volume, pitch);
         //#endif
     }
 }

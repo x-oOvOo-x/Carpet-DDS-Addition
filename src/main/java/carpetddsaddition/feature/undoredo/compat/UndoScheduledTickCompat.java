@@ -24,7 +24,7 @@ public final class UndoScheduledTickCompat {
     }
 
     //#if MC >= 12109
-
+    //$$
     //$$ public static void attachOrigin(
     //$$         ScheduledTick<?> tick
     //$$ ) {
@@ -63,6 +63,6 @@ public final class UndoScheduledTickCompat {
     //$$                     )
     //$$             );
     //$$ }
-
+    //$$
     //#endif
 }

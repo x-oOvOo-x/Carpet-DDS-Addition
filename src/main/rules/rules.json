@@ -268,6 +268,42 @@
       }
     },
     {
+      "name": "disableQuickContainerAccessSounds",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11404,
+      "maxMc": 260200,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "禁用QCA潜影盒声音"
+      },
+      "description": {
+        "en_us": "Disables only the shulker-box open and close sounds played by Quick Container Access. Ender Chest, anvil and other QCA sounds remain unchanged.",
+        "zh_cn": "仅禁用快捷容器访问打开或关闭潜影盒时播放的潜影盒声音；末影箱、铁砧及其他QCA声音保持不变。"
+      }
+    },
+    {
+      "name": "fakePlayerInventory",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11902,
+      "maxMc": 260200,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "DDS假人背包"
+      },
+      "description": {
+        "en_us": "Enhances GCA fake-player inventory and Ender Chest interfaces for DDS clients, including AMS expanded storage and DDS Quick Container Access compatibility. It does not grant fake-player access; clients without DDS and all players while disabled continue using GCA's original interfaces.",
+        "zh_cn": "为安装 DDS 客户端的玩家增强 GCA 假人背包及假人末影箱界面，支持 AMS 扩展容量与 DDS 快捷容器访问。该规则不会独立提供假人背包访问权限；未安装 DDS 客户端或关闭规则时均保持 GCA 原有界面和行为。"
+      }
+    },
+    {
       "name": "directBlockDrops",
       "type": "boolean",
       "default": false,
@@ -397,6 +433,24 @@
         "en_us": "Allows deepslate to use every stonecutting recipe available to cobbled deepslate.",
         "zh_cn": "允许深板岩在切石机中使用深板岩圆石可用的全部切石配方。"
       }
+    },
+    {
+      "name": "stonecutterCutsWood",
+      "type": "boolean",
+      "default": false,
+      "minMc": 12103,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "切石机切木头"
+      },
+      "description": {
+        "en_us": "Allows supported vanilla wood families to be processed in the stonecutter using DDS-generated recipes that exist only while the rule is enabled.",
+        "zh_cn": "允许受支持的原版木材族在切石机中使用 DDS 动态生成的木材加工配方；规则关闭时这些配方会从服务端配方管理器中移除。"
+      },
+      "maxMc": 260200
     },
     {
       "name": "smeltConcretePowderToGlass",

@@ -14,7 +14,7 @@ package carpetddsaddition.feature.undoredo.compat;
 final class UndoHistoryStack {
 
     //#if MC >= 12109
-
+    //$$
     //$$ static final long MAX_HISTORY_BYTES = 32L * 1024L * 1024L;
     //$$ private static final int ASYNC_TRIM_INTERVAL = 8;
     //$$
@@ -111,6 +111,6 @@ final class UndoHistoryStack {
     //$$ private void resetAsyncTrimCounter() {
     //$$     asyncScopesUntilTrim = 1;
     //$$ }
-
+    //$$
     //#endif
 }

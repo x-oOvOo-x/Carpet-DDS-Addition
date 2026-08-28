@@ -7,8 +7,10 @@
 package carpetddsaddition.mixin.integration.carpet.gca.client;
 
 //#if MC >= 11902 && MC <= 260200
+//$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerEnderChestMenu;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerMenu;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerMenus;
+//$$ import carpetddsaddition.integration.gca.fakeplayer.client.DdsFakePlayerEnderChestScreen;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.client.DdsFakePlayerScreen;
 //$$ import net.minecraft.client.Minecraft;
 //$$ import net.minecraft.client.gui.screens.MenuScreens;
@@ -24,20 +26,27 @@ package carpetddsaddition.mixin.integration.carpet.gca.client;
 //$$     @Inject(method = "create", at = @At("HEAD"), cancellable = true)
 //$$     private static void dds$createFakePlayerScreen(MenuType type, Minecraft minecraft, int containerId,
 //$$                                                    Component title, CallbackInfo ci) {
-//$$         if (type != DdsFakePlayerMenus.type()) return;
-//$$         if (minecraft.player == null) {
-//$$             ci.cancel();
-//$$             return;
+//$$         int enderRows = DdsFakePlayerMenus.enderRows(type);
+//$$         if (type != DdsFakePlayerMenus.type() && enderRows == 0) return;
+//$$         if (minecraft.player == null) { ci.cancel(); return; }
+//$$         if (enderRows != 0) {
+//$$             DdsFakePlayerEnderChestMenu menu = DdsFakePlayerEnderChestMenu.client(containerId, minecraft.player.getInventory(), enderRows);
+//$$             minecraft.player.containerMenu = menu;
+//$$             setScreen(minecraft, new DdsFakePlayerEnderChestScreen(menu, minecraft.player.getInventory(), title));
+//$$         } else {
+//$$             DdsFakePlayerMenu menu = DdsFakePlayerMenu.client(containerId, minecraft.player.getInventory());
+//$$             minecraft.player.containerMenu = menu;
+//$$             setScreen(minecraft, new DdsFakePlayerScreen(menu, minecraft.player.getInventory(), title));
 //$$         }
-//$$         DdsFakePlayerMenu menu = DdsFakePlayerMenu.client(containerId, minecraft.player.getInventory());
-//$$         minecraft.player.containerMenu = menu;
-//$$         DdsFakePlayerScreen screen = new DdsFakePlayerScreen(menu, minecraft.player.getInventory(), title);
+//$$         ci.cancel();
+//$$     }
+//$$
+//$$     private static void setScreen(Minecraft minecraft, net.minecraft.client.gui.screens.Screen screen) {
 //#if MC >= 260200
 //$$         minecraft.gui.setScreen(screen);
 //#else
 //$$         minecraft.setScreen(screen);
 //#endif
-//$$         ci.cancel();
 //$$     }
 //$$ }
 //#else

@@ -28,7 +28,7 @@ public final class UndoMutationRecorder {
      */
 
     //#if MC >= 12109
-
+    //$$
     //$$ public static void recordBlockCandidate(
     //$$         ServerLevel level,
     //$$         BlockPos pos
@@ -123,7 +123,7 @@ public final class UndoMutationRecorder {
     //$$         );
     //$$     }
     //$$ }
-
+    //$$
     //#endif
 
 
@@ -134,7 +134,7 @@ public final class UndoMutationRecorder {
      */
 
     //#if MC >= 12109
-
+    //$$
     //$$ public static void recordEntityBefore(
     //$$         Entity entity
     //$$ ) {
@@ -235,7 +235,7 @@ public final class UndoMutationRecorder {
     //$$             entity
     //$$     );
     //$$ }
-
+    //$$
     //#endif
 
 
@@ -246,7 +246,7 @@ public final class UndoMutationRecorder {
      */
 
     //#if MC >= 12109
-
+    //$$
     //$$ private static boolean canRecordMutation() {
     //$$     return UndoRedo.enabled()
     //$$             && !UndoRuntimeState.isRestoring();
@@ -258,6 +258,6 @@ public final class UndoMutationRecorder {
     //$$     return canRecordMutation()
     //$$             && !(entity instanceof ServerPlayer);
     //$$ }
-
+    //$$
     //#endif
 }

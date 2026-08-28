@@ -1,11 +1,13 @@
 {
   "required": true,
   "package": "carpetddsaddition.mixin",
+  "plugin": "carpetddsaddition.mixin.DdsMixinConfigPlugin",
   "compatibilityLevel": "${mixin_compatibility}",
   "mixins": [
     "feature.iceplacewater.BlockItemMixin",
     "feature.noairborneminingpenalty.PlayerMixin",
     "feature.mendingabsorbxp.ServerPlayerMixin",
+    "feature.mendingabsorbxp.PlayerListMixin",
     "feature.nocampfiredamage.CampfireBlockMixin",
     "feature.nosweetberrybusheffects.SweetBerryBushBlockMixin",
     "feature.nobabypiglinitempickup.PiglinMixin",
@@ -19,7 +21,7 @@
     "feature.enhancednametag.MinecraftServerMixin",
     "feature.rightclickharvest.ServerPlayerGameModeMixin",
     "feature.renewablelava.LiquidBlockMixin",
-    "feature.stonecuttercutsdeepslate.RecipeManagerAccessor",
+    "platform.minecraft.recipe.RecipeManagerAccessor",
     "feature.smeltconcretepowdertoglass.RecipeManagerMixin",
     "feature.smeltconcretepowdertoglass.AbstractFurnaceMenuMixin",
     "feature.nobeeanger.BeeMixin",
@@ -95,6 +97,7 @@
     "integration.carpet.EntityPlayerActionAccessor",
     "integration.gca.DdsFakePlayerMenuRegistryMixin",
     "integration.carpet.gca.FakePlayerInteractionMixin",
+    "integration.carpet.gca.GcaPlayerContainerContextMixin",
 
     "integration.carpet.SettingsManagerMixin"
   ],
@@ -103,8 +106,17 @@
     "network.ClientHandshakeMixin",
 
     "integration.carpet.gca.client.MenuScreensMixin",
+    "integration.minihud.MiniHudInventoryPreviewMixin",
+    "integration.inventoryprofilesnext.IpnAreaTypesMixin",
+    "integration.inventoryprofilesnext.IpnHintsManagerMixin",
+    "integration.inventoryprofilesnext.DdsFakePlayerScreenIpnHintsMixin",
+    "integration.inventoryprofilesnext.DdsFakePlayerEnderChestScreenIpnHintsMixin",
 
+    "feature.quickcontaineraccess.ClientboundContainerClosePacketAccessor",
+    "feature.quickcontaineraccess.ClientContainerCloseMixin",
     "feature.quickcontaineraccess.ClientPredictionMixin",
+    "feature.quickcontaineraccess.CreativeModeInventoryScreenAccessor",
+    "feature.quickcontaineraccess.CreativeSlotWrapperAccessor",
     "feature.quickcontaineraccess.ContainerScreenInputMixin",
     "feature.undoredo.KeyboardHandlerMixin"
   ],

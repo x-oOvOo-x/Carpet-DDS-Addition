@@ -39,6 +39,9 @@ dependencies {
         mappings loom.officialMojangMappings()
     }
     add(runtimeModConfiguration, "net.fabricmc:fabric-loader:${project.loader_version}")
+    if (mcVersion >= 1_19_02) {
+        add('compileOnly', 'org.anti-ad.mc:inventory-profiles-next:fabric-1.17.1-1.1.0') { transitive = false }
+    }
 
     // Prefer the creator/Masa Maven coordinate, but allow a version node to
     // override it with an exact full dependency coordinate when an old Carpet

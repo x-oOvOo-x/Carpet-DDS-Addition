@@ -18,7 +18,7 @@ final class UndoExecutor {
     private UndoExecutor() {}
 
     //#if MC >= 12109
-
+    //$$
     //$$ static int undo(ServerPlayer player) {
     //$$     if (!canUse(player)) return 0;
     //$$     UndoActionRecorder.finishPendingContainerAction(player);
@@ -69,7 +69,7 @@ final class UndoExecutor {
     //$$     messageCompletion(player, "Undo", conflicts);
     //$$     return 1;
     //$$ }
-
+    //$$
     //$$ static int redo(ServerPlayer player) {
     //$$     if (!canUse(player)) return 0;
     //$$     UndoActionRecorder.finishPendingContainerAction(player);
@@ -116,29 +116,29 @@ final class UndoExecutor {
     //$$     messageCompletion(player, "Redo", conflicts);
     //$$     return 1;
     //$$ }
-
+    //$$
     //$$ private static boolean hasContainerInventory(UndoRecord record) {
     //$$     return UndoRuntimeState.hasContainerBefore(record);
     //$$ }
-
+    //$$
     //$$ private static boolean containerInventoryMatches(UndoRecord record, ServerPlayer player, boolean after) {
     //$$     PlayerInventorySnapshot snapshot = after ? UndoRuntimeState.containerAfter(record) : UndoRuntimeState.containerBefore(record);
     //$$     return snapshot != null && snapshot.matchesCurrent(player);
     //$$ }
-
+    //$$
     //$$ private static void restoreContainerInventory(UndoRecord record, ServerPlayer player, boolean after) {
     //$$     PlayerInventorySnapshot snapshot = after ? UndoRuntimeState.containerAfter(record) : UndoRuntimeState.containerBefore(record);
     //$$     if (snapshot != null) snapshot.restore(player);
     //$$ }
-
+    //$$
     //$$ private static boolean isEffectivelyEmpty(UndoRecord record) {
     //$$     return record.isEmpty() && !hasContainerInventory(record);
     //$$ }
-
+    //$$
     //$$ private static void suppressPendingAsyncIfNeeded(UndoRecord record) {
     //$$     if (record != null && UndoRuntimeState.hasAsyncOrigin(record.id())) UndoRuntimeState.suppressAsyncOrigin(record.id());
     //$$ }
-
+    //$$
     //$$ private static boolean canUse(ServerPlayer player) {
     //$$     if (!UndoRedo.enabled()) {
     //$$         message(player, "undoRedo 规则未开启 | Undo/Redo is disabled by the undoRedo rule");
@@ -150,7 +150,7 @@ final class UndoExecutor {
     //$$     }
     //$$     return true;
     //$$ }
-
+    //$$
     //$$ private static void messageCompletion(ServerPlayer player, String action, int conflicts) {
     //$$     String zh = "Undo".equals(action) ? "撤销" : "重做";
     //$$     if (conflicts <= 0) {
@@ -160,7 +160,7 @@ final class UndoExecutor {
     //$$     message(player, zh + "完成；已保留 " + conflicts + " 项后续更改 | " + action + " complete; "
     //$$             + conflicts + (conflicts == 1 ? " later change was preserved." : " later changes were preserved."));
     //$$ }
-
+    //$$
     //$$ private static void message(ServerPlayer player, String text) {
     //#if MC <= 12111
     //$$ player.displayClientMessage(Component.literal(text), true);
@@ -168,6 +168,6 @@ final class UndoExecutor {
     //$$ player.sendSystemMessage(Component.literal(text), true);
     //#endif
     //$$ }
-
+    //$$
     //#endif
 }

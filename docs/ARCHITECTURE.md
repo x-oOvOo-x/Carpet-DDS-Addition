@@ -184,6 +184,8 @@ For versions where a shared Mixin source is intentionally inactive, use `@Pseudo
 carpetddsaddition.disabled.*
 ```
 
+`DdsMixinConfigPlugin` rejects this reserved target prefix before Mixin resolves target class metadata. This keeps inactive preprocessed Mixins inert without producing missing-target warnings. The prefix is reserved only for DDS version-disable sentinels; real optional integration targets must keep their actual class names so genuine compatibility failures remain observable.
+
 Do not create production placeholder classes solely to satisfy an inactive Mixin target. A disabled-version target must remain inert and must not introduce a real runtime class dependency.
 
 ## 11. Performance policy

@@ -22,6 +22,7 @@ package carpetddsaddition.mixin.feature.mendingabsorbxp;
 
 import carpetddsaddition.feature.mendingabsorbxp.MendingAbsorbXp;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -32,5 +33,10 @@ public abstract class ServerPlayerMixin {
     @Inject(method = "tick", at = @At("HEAD"))
     private void carpetDDSAddition$mendingAbsorbXp(CallbackInfo ci) {
         MendingAbsorbXp.tick((ServerPlayer) (Object) this);
+    }
+
+    @Inject(method = "die", at = @At("HEAD"))
+    private void carpetDDSAddition$settleMendingXpOnDeath(DamageSource source, CallbackInfo ci) {
+        MendingAbsorbXp.onDeath((ServerPlayer) (Object) this);
     }
 }

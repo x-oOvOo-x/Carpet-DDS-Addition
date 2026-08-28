@@ -415,6 +415,7 @@ Players must be close enough for the vault to become active before inserting a k
 - Suggested options: `true`, `false`
 - Supported versions: `1.21+`
 - Categories: `feature`, `survival`
+
 ---
 
 ## DDS Network Protocol (ddsNetworkProtocol)
@@ -423,11 +424,11 @@ Controls the optional DDS client-server network protocol.
 
 This protocol provides a dedicated communication channel for DDS features that support negotiated client-side enhancements.
 
-A DDS client installation is **not required** to connect to a server running DDS.
+A DDS client installation is not required to connect to a server running DDS.
 
 Players without DDS installed on the client can still connect normally and use DDS functionality that is implemented entirely on the server.
 
-For example, actual item operations performed by `quickContainerAccess` are always authoritative on the server. Installing the same DDS version on the client only improves client-side behavior by reducing incorrect vanilla prediction, such as temporary item or shulker-content preview flicker.
+For example, most `quickContainerAccess` item operations are implemented authoritatively on the server. Installing the same DDS version on the client additionally reduces incorrect vanilla prediction flicker and enables negotiated QCA slot interactions on the Creative survival-inventory tab.
 
 It is generally recommended to keep this rule enabled.
 
@@ -436,6 +437,7 @@ It is generally recommended to keep this rule enabled.
 - Suggested options: `true`, `false`
 - Supported versions: `1.14.4–26.2`
 - Categories: `feature`
+
 ---
 
 ## Undo and Redo (undoRedo)
@@ -451,7 +453,7 @@ When enabled, the following commands are available:
 
 `/undo` reverts the current player's most recent undoable action, while `/redo` reapplies the most recently undone action.
 
-The feature is restricted to **Creative-mode players**. Survival-mode and other non-Creative players cannot perform Undo or Redo.
+The feature is restricted to Creative-mode players. Survival-mode and other non-Creative players cannot perform Undo or Redo.
 
 The DDS client is optional. A server-only installation provides the complete `/undo` and `/redo` workflow.
 
@@ -483,7 +485,6 @@ Before applying Undo or Redo, DDS checks whether the affected world state has be
 
 Undo/Redo history is stored only in server runtime memory and is not persisted into the world save. Each player has a bounded history budget, and older records are automatically evicted when the limit is reached.
 
-
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
@@ -494,7 +495,7 @@ Undo/Redo history is stored only in server runtime memory and is not persisted i
 
 ## Quick Container Access (quickContainerAccess)
 
-Adds portable access for vanilla shulker boxes, Ender Chests and several workstation menus directly from the real player's own inventory, together with quick storage interactions for shulker boxes and Ender Chests.
+Adds portable access for vanilla shulker boxes, Ender Chests and several workstation menus, together with quick storage interactions for shulker boxes and Ender Chests.
 
 Portable targets include:
 
@@ -512,25 +513,70 @@ Portable targets include:
 Main interactions:
 
 - Right-click the air while holding a supported item to open its menu; shulker boxes and anvils must be single items.
-- With an empty cursor, right-click a single supported item in the player's own inventory to open it directly.
+- With an empty cursor, right-click a single supported item in a validated container slot to open it directly.
 - Stacked inventory targets keep vanilla right-click splitting behavior.
-- Carry an ordinary item on the cursor and right-click a single shulker box or Ender Chest in the player's inventory to insert it quickly.
-- Carry a single shulker box or Ender Chest and right-click an ordinary player-inventory stack to absorb it, or right-click an empty player slot to extract the last non-empty internal stack.
+- Carry an ordinary item on the cursor and right-click a single shulker box or Ender Chest to insert it quickly.
+- Carry a single shulker box or Ender Chest and right-click an ordinary stack to absorb it, or right-click an empty compatible slot to extract the last non-empty internal stack.
+- While a shulker box is open through QCA, carry another single shulker box and right-click the opened shulker's protected source slot to merge the carried shulker's contents into the currently open shulker. Compatible stacks are merged first, then empty slots are filled, and any remainder stays in the carried shulker.
 
-There is exactly one nested-opening exception: **a single shulker box inside the current player's own Ender Chest can be right-clicked and opened directly.** World containers such as chests, barrels, hoppers and container minecarts keep vanilla behavior, as do workstations stored inside shulker boxes. Carpet fake-player inventories and other players' inventories are not trusted sources.
+In Creative mode, QCA operates on real player-inventory slots only while the survival-inventory tab is selected. Creative item-picker tabs, including the player hotbar row rendered at the bottom of those tabs, are intentionally left entirely to vanilla: QCA does not perform portable opening, quick storage, right-drag storage, or local prediction suppression there. QCA slot interactions on the Creative survival-inventory tab require a compatible DDS client and an available DDS network protocol.
 
-Mutable shulker access always requires a stack count of exactly `1`. Invalid sessions are terminated rather than repaired by splitting stacked shulkers or giving replacement items. The server remains authoritative for all item changes.
+Nested opening is supported from validated slots in persistent vanilla container menus and from the GCA/DDS fake-player interfaces when GCA grants access. This allows chains such as:
 
-The DDS client is optional. A server-only installation provides all gameplay functionality; installing the same DDS build on the client additionally suppresses incorrect vanilla local prediction for DDS quick right-clicks, reducing item and shulker-tooltip flicker.
+```text
+Player inventory → Shulker Box → Workstation
+Chest → Shulker Box → Workstation
+Ender Chest → Shulker Box → Workstation
+Fake-player inventory → Shulker Box → Workstation
+```
+
+Ender Chests always resolve to the current inventory owner's canonical Ender Chest. Re-entering an Ender Chest already present in the active path navigates back to that existing node instead of recursively nesting another copy. GCA control slots, invalid/result-only slots, and slots that do not permit normal pickup or placement are excluded from direct QCA mutation.
+
+Mutable shulker access always requires a stack count of exactly `1`. Invalid sessions are terminated rather than repaired by splitting stacked shulkers or giving replacement items. Active item-backed sources are identity-leased so another QCA writer cannot mutate the same source concurrently. The server remains authoritative for all item changes.
+
+A DDS client is not required for the main server-recognizable QCA gameplay paths. Installing the same DDS build additionally enables the dedicated Creative survival-inventory slot interactions and suppresses incorrect vanilla local prediction for DDS quick right-clicks, reducing item and shulker-tooltip flicker.
 
 Soft compatibility is provided for Carpet AMS Addition `largeShulkerBox` and `largeEnderChest`. AMS `largeEnderChest` requires the player to rejoin after enabling the rule before an already-online player's Ender Chest is actually resized to 54 slots.
 
+- Type: `boolean`
+- Default: `false`
+- Suggested options: `true`, `false`
+- Note: Available portable workstation targets depend on which blocks and menus exist in the corresponding vanilla Minecraft version.
+- Supported versions: `1.14.4–26.2`
+- Categories: `feature`, `survival`
+
+---
+
+## Disable QCA Shulker Sounds (disableQuickContainerAccessSounds)
+
+When enabled, Quick Container Access does not play the shulker-box open or close sounds generated by QCA shulker interactions.
+
+Ender Chest, anvil, and other QCA sounds and behavior remain unchanged.
 
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
 - Supported versions: `1.14.4–26.2`
-- Note: Available portable workstation targets depend on which blocks and menus exist in the corresponding vanilla Minecraft version.
+- Categories: `feature`, `survival`
+
+---
+
+## DDS Fake-Player Inventory (fakePlayerInventory)
+
+Enhances GCA fake-player inventory and Ender Chest interfaces for players using a DDS client. This rule does not grant fake-player inventory access by itself: GCA remains responsible for whether the viewer may open the fake player's inventory or Ender Chest.
+
+When the rule is enabled and the viewer has a compatible DDS client, DDS replaces the corresponding GCA screen with its enhanced interface. When the rule is disabled, or when the viewer does not have DDS installed, GCA's original interface and behavior remain unchanged.
+
+The enhanced fake-player inventory provides action controls, editable attack/use intervals, number-key and on-screen hotbar selection, and separate main-inventory/hotbar container grouping so supported sorters can operate on those regions independently.
+
+The enhanced fake-player Ender Chest uses the fake player's real Ender Chest inventory, supports both the vanilla 27-slot size and Carpet AMS Addition's 54-slot `largeEnderChest`, and provides bulk store, take, drop, sneak-toggle and disconnect controls.
+
+DDS Quick Container Access can operate on the real fake-player inventory and Ender Chest slots while preserving GCA control slots and server-authoritative item validation.
+
+- Type: `boolean`
+- Default: `false`
+- Suggested options: `true`, `false`
+- Supported versions: `1.19.2–26.2`
 - Categories: `feature`, `survival`
 
 ---
@@ -557,7 +603,6 @@ The rule only tracks synchronous drops associated with the current player action
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.14.4–26.2`
 - Categories: `feature`, `survival`
 
 ---
@@ -635,7 +680,6 @@ Prevents villagers from transforming into witches when struck by lightning.
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.14.4–26.2`
 - Categories: `feature`, `survival`
 
 ---
@@ -689,7 +733,6 @@ Explosion sources not listed by this rule retain their vanilla behavior.
 - Type: `String`
 - Default: `none`
 - Suggested options: `none`, `all`, `creeper`, `tnt`, `tnt_minecart`, `end_crystal`, `ghast`, `wither`, `wither_skull`
-- Supported versions: `1.14.4–26.2`
 - Categories: `feature`, `survival`
 
 ---
@@ -701,7 +744,6 @@ Prevents beds and respawn anchors from exploding in dimensions where they would 
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.14.4–26.2`
 - Categories: `feature`, `survival`
 
 ---
@@ -746,6 +788,51 @@ The rule only expands valid stonecutter inputs for deepslate and does not change
 
 ---
 
+## Stonecut Wood (stonecutterCutsWood)
+
+Adds DDS-generated stonecutter recipes for supported vanilla wood families.
+
+These recipes exist only while the rule is enabled. When the rule is disabled, DDS removes its generated wood stonecutting recipes from the server recipe manager.
+
+Standard wood families support logs, wood, stripped logs and stripped wood. Nether wood families use stems, hyphae and their stripped variants. Bamboo uses bamboo blocks and stripped bamboo blocks.
+
+For example, oak supports:
+
+```text
+1 Oak Log -> 4 Oak Planks
+1 Oak Log -> 4 Oak Buttons
+1 Oak Log -> 4 Oak Stairs
+1 Oak Log -> 8 Oak Slabs
+1 Oak Log -> 2 Oak Doors
+1 Oak Log -> 4 Oak Fences
+1 Oak Log -> 1 Oak Fence Gate
+1 Oak Log -> 2 Oak Pressure Plates
+1 Oak Log -> 1 Oak Shelf
+1 Oak Log -> 2 Oak Signs
+1 Oak Log -> 4 Oak Trapdoors
+1 Oak Log -> 1 Stripped Oak Log
+
+1 Oak Plank -> 1 Oak Button
+1 Oak Plank -> 1 Oak Fence
+1 Oak Plank -> 2 Oak Slabs
+1 Oak Plank -> 1 Oak Stair
+1 Oak Plank -> 1 Oak Trapdoor
+
+1 Oak Stair -> 1 Oak Slab
+```
+
+Wood, stripped logs and stripped wood use the same direct-processing outputs as their corresponding log family.
+
+Equivalent recipes are generated for other supported vanilla wood families when the corresponding vanilla items exist.
+
+- Type: `boolean`
+- Default: `false`
+- Suggested options: `true`, `false`
+- Supported versions: `1.21.3–26.2`
+- Categories: `feature`, `survival`
+
+---
+
 ## Smelt Concrete Powder to Glass (smeltConcretePowderToGlass)
 
 Allows all 16 colors of concrete powder to be smelted in a normal furnace into the corresponding stained glass.
@@ -775,11 +862,13 @@ Water physics, bee AI, and all other vanilla behavior remain unchanged.
 
 ## Mending Absorbs Stored XP (mendingAbsorbXp)
 
-When a Survival player holds a damaged Mending item in the offhand, the item periodically consumes stored player experience to repair itself.
+When a Survival player holds a damaged Mending item in the offhand, the item consumes stored player experience to repair itself.
 
-At most 1 XP is consumed every 5 ticks, and each XP repairs up to 2 durability.
+During normal repair, XP is deducted smoothly each game tick while durability is settled once every 10 ticks. At 20 TPS, the maximum repair rate is 100 durability per second, with each XP repairing up to 2 durability.
 
-A feedback sound is played when the item becomes fully repaired, with periodic audible feedback during continuous repair.
+While sneaking, available XP is consumed immediately to repair the current offhand item as much as possible in a single operation.
+
+Experience-orb pickup sounds play periodically during continuous repair, and the player level-up sound plays when the item becomes fully repaired.
 
 - Type: `boolean`
 - Default: `false`

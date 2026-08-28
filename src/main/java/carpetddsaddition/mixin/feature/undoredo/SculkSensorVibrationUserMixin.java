@@ -32,7 +32,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 //#endif
 
 //#if MC >= 12109
-// String target is intentional: VibrationUser is an inaccessible protected nested class.
+//$$ // String target is intentional: VibrationUser is an inaccessible protected nested class.
 //$$ @Mixin(targets = "net.minecraft.world.level.block.entity.SculkSensorBlockEntity$VibrationUser")
 //$$ public abstract class SculkSensorVibrationUserMixin {
 //$$     @Shadow @Final protected BlockPos blockPos;

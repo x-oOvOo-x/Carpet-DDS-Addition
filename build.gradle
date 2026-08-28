@@ -43,8 +43,8 @@ preprocess {
     /*
      * Keep node declarations in newest -> oldest order for readability.
      */
-    def mc2612 = createNode('26.1.2', 26_01_02, null)
     def mc262 = createNode('26.2', 26_02_00, null)
+    def mc2612 = createNode('26.1.2', 26_01_02, null)
 
     def mc12111 = createNode('1.21.11', 1_21_11, '')
     def mc12110 = createNode('1.21.10', 1_21_10, '')
@@ -278,6 +278,23 @@ gradle.projectsEvaluated {
     }
 }
 
+tasks.register('verifyFramework', Exec) {
+    group = 'verification'
+    description = 'Verifies DDS architecture, rule docs, and lifecycle boundaries.'
+
+    def python = System.getProperty('os.name')
+            .toLowerCase()
+            .contains('windows') ? 'python' : 'python3'
+
+    commandLine python, 'scripts/verify-framework.py'
+}
+
+tasks.register('verifyDDS') {
+    group = 'verification'
+    description = 'Runs all DDS static verification checks.'
+    dependsOn('verifyFramework')
+}
+
 /*
  * Resolve and verify the game Java launcher for every supported target.
  *
@@ -349,19 +366,26 @@ tasks.register('buildAll') {
     description =
             'Builds every supported Minecraft target from newest to oldest.'
 
+    dependsOn('verifyFramework')
     dependsOn(orderedBuildTaskPaths)
 }
 
 
 /*
- * Build every supported Minecraft target and gather release jars.
+ * Build every supported Minecraft target and gather exactly one runtime jar
+ * for each target into a single release directory.
+ *
+ * Do not scan/copy every jar from versions/<target>/build/libs: local builds may leave
+ * stale artifacts from an older mod version behind. The expected archive name
+ * is derived from the same Gradle properties that define each subproject jar.
  */
 tasks.register('buildAndGather') {
     group = 'build'
 
     description =
-            'Builds all targets from newest to oldest and copies release jars into build/releases.'
+            'Builds all targets and gathers exactly one current release jar per target into build/releases.'
 
+    dependsOn('verifyFramework')
     dependsOn(orderedBuildTaskPaths)
 
     doLast {
@@ -374,26 +398,44 @@ tasks.register('buildAndGather') {
         delete out
         out.mkdirs()
 
+        def gatheredNames = []
+
         /*
          * Gather in the same newest -> oldest order used by settings.json.
          */
         supportedVersions.each { version ->
             def p = project(":${version}")
+            def expectedName =
+                    "${p.archives_base_name}-v${p.mod_version}-mc${p.minecraft_version}.jar"
+            def releaseJar = new File(
+                    p.buildDir,
+                    "libs/${expectedName}"
+            )
+
+            if (!releaseJar.isFile()) {
+                throw new GradleException(
+                        "Expected release jar was not produced for ${p.path}: ${releaseJar}"
+                )
+            }
 
             copy {
-                from(new File(p.buildDir, 'libs'))
-
-                include('*.jar')
-
-                exclude(
-                        '*-sources.jar',
-                        '*-dev.jar'
-                )
-
+                from(releaseJar)
                 into(out)
             }
+
+            gatheredNames << expectedName
         }
 
-        println "Release jars: ${out}"
+        if (gatheredNames.size() != supportedVersions.size()
+                || gatheredNames.toSet().size() != supportedVersions.size()) {
+            throw new GradleException(
+                    'Release jar gathering did not produce exactly one unique jar per supported target.'
+            )
+        }
+
+        println "Release jars (${gatheredNames.size()}): ${out}"
+        gatheredNames.each {
+            println "  ${it}"
+        }
     }
 }

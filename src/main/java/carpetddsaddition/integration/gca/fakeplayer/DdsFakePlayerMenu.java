@@ -10,8 +10,14 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$ import carpet.helpers.EntityPlayerActionPack;
 //$$ import carpet.helpers.EntityPlayerActionPack.ActionType;
 //$$ import carpet.patches.EntityPlayerMPFake;
+//$$ import carpetddsaddition.core.inventory.DdsEnderMenuFactory;
+//$$ import carpetddsaddition.core.inventory.DdsInventoryOwnerView;
+//$$ import carpetddsaddition.core.inventory.DdsReopenableMenu;
+//$$ import carpetddsaddition.feature.fakeplayerinventory.FakePlayerInventory;
+//$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.world.Container;
 //$$ import net.minecraft.world.SimpleContainer;
+//$$ import net.minecraft.world.SimpleMenuProvider;
 //$$ import net.minecraft.world.entity.EquipmentSlot;
 //$$ import net.minecraft.world.entity.player.Inventory;
 //$$ import net.minecraft.world.entity.player.Player;
@@ -22,18 +28,17 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$ import net.minecraft.world.inventory.Slot;
 //$$ import net.minecraft.world.item.ItemStack;
 //$$
-//$$ public final class DdsFakePlayerMenu extends AbstractContainerMenu {
+//$$ public final class DdsFakePlayerMenu extends AbstractContainerMenu implements DdsInventoryOwnerView, DdsEnderMenuFactory, DdsReopenableMenu {
 //$$     public static final int FAKE_STORAGE_START = 5, FAKE_HOTBAR_START = 32, FAKE_STORAGE_END = 41;
 //$$     public static final int VIEWER_MAIN_START = 41, VIEWER_HOTBAR_END = 77;
-//$$     private static final int[] STORAGE_MAPPING = createStorageMapping();
-//$$     private static final int[] EQUIPMENT_MAPPING = {39, 38, 37, 36, 40}; // head, chest, legs, feet, offhand
+//$$     private static final int[] MAIN_MAPPING = createMapping(9, 27), HOTBAR_MAPPING = createMapping(0, 9);
+//$$     private static final int[] EQUIPMENT_MAPPING = {39, 38, 37, 36, 40};
 //$$     private final EntityPlayerMPFake target;
 //$$     private final ContainerData state;
 //$$
 //$$     public static DdsFakePlayerMenu client(int containerId, Inventory viewerInventory) {
 //$$         return new DdsFakePlayerMenu(containerId, viewerInventory, null, new SimpleContainer(41), new SimpleContainerData(5));
 //$$     }
-//$$
 //$$     public static DdsFakePlayerMenu server(int containerId, Inventory viewerInventory, EntityPlayerMPFake target) {
 //$$         return new DdsFakePlayerMenu(containerId, viewerInventory, target, target.getInventory(), new TargetStateData(target));
 //$$     }
@@ -41,9 +46,12 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$     private DdsFakePlayerMenu(int containerId, Inventory viewerInventory, EntityPlayerMPFake target, Container fakeInventory, ContainerData state) {
 //$$         super(DdsFakePlayerMenus.type(), containerId);
 //$$         this.target = target; this.state = state;
-//$$         addFakeEquipmentSlots(new DdsMappedContainer(fakeInventory, EQUIPMENT_MAPPING), target);
-//$$         addInventorySlots(new DdsMappedContainer(fakeInventory, STORAGE_MAPPING), 84, 142);
-//$$         addInventorySlots(viewerInventory, 184, 242);
+//$$         Container canonical = target == null ? null : fakeInventory;
+//$$         addFakeEquipmentSlots(new DdsMappedContainer(fakeInventory, EQUIPMENT_MAPPING, target, canonical), target);
+//$$         addFakeInventorySlots(
+//$$                 new DdsMappedContainer(fakeInventory, MAIN_MAPPING, target, canonical),
+//$$                 new DdsMappedContainer(fakeInventory, HOTBAR_MAPPING, target, canonical), 84, 142);
+//$$         addPlayerInventorySlots(viewerInventory, 184, 242);
 //$$         addDataSlots(state);
 //$$     }
 //$$
@@ -54,14 +62,30 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$         addSlot(new DdsFakePlayerEquipmentSlot(equipment, owner, EquipmentSlot.FEET, 3, 8, 62, InventoryMenu.EMPTY_ARMOR_SLOT_BOOTS));
 //$$         addSlot(new DdsFakePlayerEquipmentSlot(equipment, owner, EquipmentSlot.OFFHAND, 4, 77, 62, InventoryMenu.EMPTY_ARMOR_SLOT_SHIELD));
 //$$     }
-//$$
-//$$     private void addInventorySlots(Container inventory, int mainY, int hotbarY) {
+//$$     private void addFakeInventorySlots(Container main, Container hotbar, int mainY, int hotbarY) {
+//$$         for (int row = 0; row < 3; row++) for (int column = 0; column < 9; column++)
+//$$             addSlot(new Slot(main, column + row * 9, 8 + column * 18, mainY + row * 18));
+//$$         for (int column = 0; column < 9; column++) addSlot(new Slot(hotbar, column, 8 + column * 18, hotbarY));
+//$$     }
+//$$     private void addPlayerInventorySlots(Inventory inventory, int mainY, int hotbarY) {
 //$$         for (int row = 0; row < 3; row++) for (int column = 0; column < 9; column++)
 //$$             addSlot(new Slot(inventory, column + (row + 1) * 9, 8 + column * 18, mainY + row * 18));
 //$$         for (int column = 0; column < 9; column++) addSlot(new Slot(inventory, column, 8 + column * 18, hotbarY));
 //$$     }
 //$$
-//$$     @Override public boolean stillValid(Player player) { return target == null || target.isAlive() && player.distanceToSqr(target) <= 64.0D; }
+//$$     @Override public boolean stillValid(Player player) {
+//$$         return target == null || FakePlayerInventory.enabled() && DdsGcaFakePlayerBridge.isGcaInventoryRuleEnabled()
+//$$                 && target.isAlive() && player.distanceToSqr(target) <= 64.0D;
+//$$     }
+//$$     @Override public ServerPlayer ddsInventoryOwner() { return target; }
+//$$     @Override public AbstractContainerMenu ddsCreateEnderMenu(int id, Inventory viewerInventory) {
+//$$         return target == null ? null : DdsFakePlayerEnderChestMenu.create(id, viewerInventory, target);
+//$$     }
+//$$     @Override public boolean ddsCanReopen(ServerPlayer viewer) { return target != null && stillValid(viewer); }
+//$$     @Override public boolean ddsReopen(ServerPlayer viewer) {
+//$$         if (!ddsCanReopen(viewer)) return false;
+//$$         return viewer.openMenu(new SimpleMenuProvider((id, inventory, player) -> server(id, inventory, target), target.getName())).isPresent();
+//$$     }
 //$$
 //$$     @Override public ItemStack quickMoveStack(Player player, int slotIndex) {
 //$$         if (slotIndex < 0 || slotIndex >= slots.size()) return ItemStack.EMPTY;
@@ -79,12 +103,10 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$         slot.onTake(player, stack);
 //$$         return original;
 //$$     }
-//$$
 //$$     private static void clearMovedSlot(Slot slot, ItemStack original) {
 //$$         if (slot instanceof DdsFakePlayerEquipmentSlot) ((DdsFakePlayerEquipmentSlot) slot).setFromQuickMove(ItemStack.EMPTY, original);
 //$$         else slot.set(ItemStack.EMPTY);
 //$$     }
-//$$
 //$$     private static int findFakeEquipmentSlot(Player owner, ItemStack stack) {
 //$$         EquipmentSlot equipmentSlot = DdsFakePlayerCarpetCompat.equipmentSlotForItem(owner, stack);
 //$$         switch (equipmentSlot) {
@@ -108,10 +130,7 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$     public void predictUseContinuous() { predictMode(3, DdsFakePlayerActions.MODE_CONTINUOUS); }
 //$$     public void predictStopAttack() { predictMode(1, DdsFakePlayerActions.MODE_NONE); }
 //$$     public void predictStopUse() { predictMode(3, DdsFakePlayerActions.MODE_NONE); }
-//$$
-//$$     public void predictStopAll() {
-//$$         if (target == null) { state.set(1, DdsFakePlayerActions.MODE_NONE); state.set(3, DdsFakePlayerActions.MODE_NONE); }
-//$$     }
+//$$     public void predictStopAll() { if (target == null) { state.set(1, DdsFakePlayerActions.MODE_NONE); state.set(3, DdsFakePlayerActions.MODE_NONE); } }
 //$$     public void predictSelectedHotbar(int slot) { if (target == null && slot >= 0 && slot <= 8) state.set(0, slot); }
 //$$     private void predictInterval(int modeIndex, int valueIndex, int interval) {
 //$$         if (target == null) { state.set(modeIndex, DdsFakePlayerActions.MODE_INTERVAL); state.set(valueIndex, DdsFakePlayerActions.clampInterval(interval)); }
@@ -119,11 +138,7 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$     private void predictMode(int index, int mode) { if (target == null) state.set(index, mode); }
 //$$     public EntityPlayerMPFake target() { return target; }
 //$$
-//$$     private static int[] createStorageMapping() {
-//$$         int[] mapping = new int[36];
-//$$         for (int i = 0; i < mapping.length; i++) mapping[i] = i;
-//$$         return mapping;
-//$$     }
+//$$     private static int[] createMapping(int start, int size) { int[] mapping = new int[size]; for (int i = 0; i < size; i++) mapping[i] = start + i; return mapping; }
 //$$
 //$$     private static final class TargetStateData implements ContainerData {
 //$$         private final EntityPlayerMPFake target;

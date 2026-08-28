@@ -47,18 +47,39 @@ public final class DdsServerNetwork {
         return state != null && DdsServerRoutePolicy.isProtocolCompatible(state.protocolVersion) && state.supportedC2S.contains(packetId);
     }
 
+    public static boolean doesClientSupportS2C(ServerPlayer player, String packetId) {
+        if (!DDSRules.ddsNetworkProtocol() || player == null || player.connection == null || !DdsPacketRegistry.hasS2C(packetId)) return false;
+        ClientState state = CLIENTS.get(player.connection);
+        return state != null && DdsServerRoutePolicy.isProtocolCompatible(state.protocolVersion) && state.supportedS2C.contains(packetId);
+    }
+
+    public static boolean send(ServerPlayer player, String packetId, CompoundTag data) {
+        if (!doesClientSupportS2C(player, packetId)) return false;
+        sendPayload(player.connection, packetId, data);
+        return true;
+    }
+
     public static void syncProtocolRuleState(MinecraftServer server) {
         if (server == null) return;
         bindServer(server);
-        boolean enabled = DDSRules.ddsNetworkProtocol();
-        if (enabled == observedProtocolEnabled) return;
+        boolean enabled = DDSRules.ddsNetworkProtocol(), wasEnabled = observedProtocolEnabled;
+        if (enabled == wasEnabled) return;
         observedProtocolEnabled = enabled;
         // Copy weak keys before sending so stale-key expunging cannot perturb iteration.
         for (ServerGamePacketListenerImpl listener : new ArrayList<>(CLIENTS.keySet())) {
+            updateDisabledGrace(listener, wasEnabled, enabled);
             if (listener != null) {
                 sendHello(listener, enabled);
             }
         }
+    }
+
+    private static void updateDisabledGrace(ServerGamePacketListenerImpl listener, boolean wasEnabled, boolean enabled) {
+        if (listener == null) return;
+        ClientState state = CLIENTS.get(listener);
+        if (state == null) return;
+        if (wasEnabled && !enabled) state.armDisabledGrace();
+        else if (enabled) state.clearDisabledGrace();
     }
 
     public static void resetRuntimeState() {
@@ -128,9 +149,10 @@ public final class DdsServerNetwork {
         }
         ClientState previous = CLIENTS.get(listener);
         DdsPacketRegistry.C2SPacket packet = DdsPacketRegistry.getC2S(packetId);
-        // Generic form of the historical QCA one-packet disabled grace.
+        // One eligible packet may complete an in-flight interaction after true -> false; the grace is consumed once.
         if (previous != null && DdsServerRoutePolicy.isProtocolCompatible(previous.protocolVersion)
-                && DdsServerRoutePolicy.canDispatchDisabledGrace(packet, previous.supportedC2S) && previous.allowRequest())
+                && DdsServerRoutePolicy.canDispatchDisabledGrace(packet, previous.supportedC2S)
+                && previous.allowRequest() && previous.consumeDisabledGrace())
             packet.handle(listener.player, payload.data());
         // Preserve fail-closed HELLO feedback, but bound client-triggered control traffic.
         ClientState controlState = previous != null ? previous : clientState(listener);
@@ -169,11 +191,15 @@ public final class DdsServerNetwork {
         reply.putInt("protocol_enabled", enabled ? 1 : 0);
         reply.putString("mod_version", CarpetDDSAddition.getVersion());
         reply.putString("supported_c2s", enabled ? DdsProtocol.encodeIds(DdsPacketRegistry.localC2SPackets()) : "");
+        sendPayload(listener, DdsProtocol.HELLO_S2C, reply);
+    }
+
+    private static void sendPayload(ServerGamePacketListenerImpl listener, String packetId, CompoundTag data) {
     //#if MC >= 12002
-    //$$ listener.send(new ClientboundCustomPayloadPacket(new DdsProtocol.Payload(DdsProtocol.HELLO_S2C, reply)));
+    //$$ listener.send(new ClientboundCustomPayloadPacket(new DdsProtocol.Payload(packetId, data)));
     //#else
         FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        new DdsProtocol.Payload(DdsProtocol.HELLO_S2C, reply).write(buf);
+        new DdsProtocol.Payload(packetId, data).write(buf);
         listener.send(new ClientboundCustomPayloadPacket(DdsProtocol.CHANNEL, buf));
     //#endif
     }
@@ -181,9 +207,9 @@ public final class DdsServerNetwork {
     private static final class ClientState {
         private static final int MAX_REQUESTS_PER_SECOND = 160, MAX_CONTROL_REQUESTS_PER_SECOND = 8;
         private int protocolVersion;
-        @SuppressWarnings("unused")
         private Set<String> supportedS2C = Collections.emptySet();
         private Set<String> supportedC2S = Collections.emptySet();
+        private boolean disabledGraceAvailable;
         private final FixedWindowLimiter requestLimiter = new FixedWindowLimiter(MAX_REQUESTS_PER_SECOND);
         private final FixedWindowLimiter controlLimiter = new FixedWindowLimiter(MAX_CONTROL_REQUESTS_PER_SECOND);
 
@@ -195,6 +221,9 @@ public final class DdsServerNetwork {
         private static Set<String> immutableCopy(Set<String> values) {
             return values == null || values.isEmpty() ? Collections.emptySet() : Collections.unmodifiableSet(new LinkedHashSet<>(values));
         }
+        private void armDisabledGrace() { disabledGraceAvailable = true; }
+        private void clearDisabledGrace() { disabledGraceAvailable = false; }
+        private boolean consumeDisabledGrace() { if (!disabledGraceAvailable) return false; disabledGraceAvailable = false; return true; }
         private boolean allowRequest() { return requestLimiter.allow(); }
         private boolean allowControlTraffic() { return controlLimiter.allow(); }
     }

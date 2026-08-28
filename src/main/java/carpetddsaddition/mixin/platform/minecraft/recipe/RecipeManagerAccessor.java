@@ -4,8 +4,9 @@
  *
  * Copyright (C) 2026 DDS and contributors
  */
-package carpetddsaddition.mixin.feature.stonecuttercutsdeepslate;
+package carpetddsaddition.mixin.platform.minecraft.recipe;
 
+import carpetddsaddition.platform.minecraft.recipe.RecipeManagerBridge;
 import net.minecraft.world.item.crafting.RecipeManager;
 import org.spongepowered.asm.mixin.Mixin;
 //#if MC >= 12103
@@ -15,8 +16,9 @@ import org.spongepowered.asm.mixin.Mixin;
 
 /** Modern RecipeManager recipes-field bridge; older versions keep an empty shell. */
 @Mixin(RecipeManager.class)
-public interface RecipeManagerAccessor {
+public interface RecipeManagerAccessor extends RecipeManagerBridge {
     //#if MC >= 12103
+    //$$ @Override
     //$$ @Accessor("recipes")
     //$$ void carpetDDSAddition$setRecipes(RecipeMap recipes);
     //#endif

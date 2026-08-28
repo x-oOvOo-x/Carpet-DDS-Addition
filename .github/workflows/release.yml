@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   release:
+    if: github.repository == 'x-oOvOo-x/Carpet-DDS-Addition'
     runs-on: ubuntu-latest
 
     steps:
@@ -55,11 +56,14 @@ jobs:
           echo "MOD_VERSION=${MOD_VERSION}" >> "$GITHUB_ENV"
           echo "RELEASE_NOTES=${RELEASE_NOTES}" >> "$GITHUB_ENV"
 
-      - name: Verify framework invariants
-        run: python3 scripts/verify-framework.py
+      - name: Verify preprocessor round-trip
+        run: python3 scripts/verify-preprocessor-roundtrip.py --skip-build
 
-      - name: Build every Minecraft target
-        run: ./gradlew buildAndGather --stacktrace
+      - name: Audit release Mixins
+        run: ./gradlew :1.21.11:runMixinAudit :1.21.11:runMixinAuditClient :26.2:runMixinAudit :26.2:runMixinAuditClient --stacktrace --no-parallel
+
+      - name: Verify and build every Minecraft target
+        run: ./gradlew buildAndGather --stacktrace --no-parallel
 
       - name: Create or update GitHub Release
         env:
@@ -91,6 +95,18 @@ jobs:
         run: |
           python3 scripts/publish-modrinth.py \
             --project "${MODRINTH_PROJECT_SLUG}" \
+            --version "${MOD_VERSION}" \
+            --release-dir build/releases \
+            --config scripts/modrinth-versions.json \
+            --changelog-file "${RELEASE_NOTES}"
+
+      - name: Publish versions to CurseForge
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
+        run: |
+          python3 scripts/publish-curseforge.py \
+            --project "${CURSEFORGE_PROJECT_ID}" \
             --version "${MOD_VERSION}" \
             --release-dir build/releases \
             --config scripts/modrinth-versions.json \

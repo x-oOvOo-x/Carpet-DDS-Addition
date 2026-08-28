@@ -7,6 +7,7 @@
 package carpetddsaddition.mixin.feature.quickcontaineraccess;
 
 import carpetddsaddition.feature.quickcontaineraccess.compat.QuickContainerAccessCompat;
+import carpetddsaddition.feature.quickcontaineraccess.compat.QuickContainerAccessSafety;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,7 +20,9 @@ public abstract class AbstractContainerMenuMixin {
     //#if MC >= 11404 && MC <= 260200
     @Inject(method = "broadcastChanges", at = @At("HEAD"))
     private void dds$validateQuickContainerSession(CallbackInfo ci) {
-        QuickContainerAccessCompat.validateMenu((AbstractContainerMenu) (Object) this);
+        AbstractContainerMenu menu = (AbstractContainerMenu) (Object) this;
+        QuickContainerAccessSafety.validateOwners(menu);
+        QuickContainerAccessCompat.validateMenu(menu);
     }
 
     @Inject(method = "removed", at = @At("TAIL"))

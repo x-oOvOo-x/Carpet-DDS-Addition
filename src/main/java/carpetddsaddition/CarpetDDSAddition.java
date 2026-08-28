@@ -25,6 +25,7 @@ import carpetddsaddition.core.bootstrap.DdsRuntimeBootstrap;
 import carpetddsaddition.core.mixin.DdsMixinAudit;
 import carpetddsaddition.platform.carpet.CarpetExtensionCompat;
 import carpetddsaddition.platform.carpet.CarpetRuleCompat;
+import carpetddsaddition.platform.fabric.DdsBuiltinResourcePackCompat;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -37,6 +38,7 @@ public final class CarpetDDSAddition extends CarpetExtensionCompat implements Mo
     public void onInitialize() {
         version = FabricLoader.getInstance().getModContainer(MOD_ID).orElseThrow(RuntimeException::new)
                 .getMetadata().getVersion().getFriendlyString();
+        DdsBuiltinResourcePackCompat.register();
         DdsMixinAudit.runIfRequested();
         DdsNetworkBootstrap.initialize();
         DdsRuntimeBootstrap.initialize();

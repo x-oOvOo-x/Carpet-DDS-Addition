@@ -23,7 +23,7 @@ final class UndoRuntimeState {
     private UndoRuntimeState() {}
 
     //#if MC >= 12109
-
+    //$$
     //$$ private static final AtomicLong NEXT_ID = new AtomicLong(1L);
     //$$ private static final Map<UUID, PlayerUndoHistory> HISTORIES = new ConcurrentHashMap<>();
     //$$ private static final Map<Long, UndoRecord> RECORDS_BY_ID = new ConcurrentHashMap<>();
@@ -173,6 +173,6 @@ final class UndoRuntimeState {
     //$$     UndoContext.clear();
     //$$     RESTORING.remove();
     //$$ }
-
+    //$$
     //#endif
 }

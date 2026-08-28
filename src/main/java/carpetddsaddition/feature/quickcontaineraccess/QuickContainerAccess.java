@@ -12,5 +12,6 @@ import carpetddsaddition.generated.DDSRules;
 public final class QuickContainerAccess {
     private QuickContainerAccess() {}
     public static boolean enabled() { return DDSRules.quickContainerAccess(); }
+    public static boolean soundsDisabled() { return DDSRules.disableQuickContainerAccessSounds(); }
     public static void onRuleChanged() { if (!enabled()) QuickContainerAccessCompat.closeActiveMenus(); }
 }

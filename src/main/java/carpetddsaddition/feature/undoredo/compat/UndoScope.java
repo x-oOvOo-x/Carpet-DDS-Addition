@@ -9,7 +9,7 @@ package carpetddsaddition.feature.undoredo.compat;
 public final class UndoScope implements AutoCloseable {
 
     //#if MC >= 12109
-
+    //$$
     //$$ private static final UndoScope NOOP =
     //$$         new UndoScope(
     //$$                 null
@@ -60,7 +60,7 @@ public final class UndoScope implements AutoCloseable {
     //$$             current
     //$$     );
     //$$ }
-
+    //$$
     //#else
 
     private static final UndoScope NOOP =

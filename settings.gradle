@@ -41,6 +41,20 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 
+/*
+ * Apply shared per-version build overlays before common.gradle is evaluated.
+ * Each overlay defers Loom-dependent configuration until after evaluation.
+ */
+def fakePlayerUiPackScript = file('gradle/fake-player-ui-resource-pack.gradle')
+def versionRunIsolationScript = file('gradle/version-run-isolation.gradle')
+gradle.beforeProject { p ->
+    if (p.path != ':') {
+        p.apply(from: fakePlayerUiPackScript)
+        p.apply(from: versionRunIsolationScript)
+    }
+}
+
+
 def cfg =
         new JsonSlurper()
                 .parseText(

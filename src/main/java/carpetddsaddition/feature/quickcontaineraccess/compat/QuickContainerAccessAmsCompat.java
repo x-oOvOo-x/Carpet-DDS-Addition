@@ -17,51 +17,43 @@ final class QuickContainerAccessAmsCompat {
     private static final String AMS_SETTINGS = "carpetamsaddition.CarpetAMSAdditionSettings";
     private static final String AMS_LAZY_SETTINGS = "carpetamsaddition.CarpetAMSAdditionLazySettings";
     private static final String AMS_LAZY_RULE = "carpetamsaddition.CarpetAMSAdditionLazySettings$Rule";
-    private static boolean resolved, largeShulkerBoxEnabled;
+    //#if MC >= 11404 && MC <= 260200
+    private static boolean resolved;
+    private static Method lazyIsEnabled;
+    private static Object lazyRule;
+    private static Field legacyField;
+    //#endif
     private QuickContainerAccessAmsCompat() {}
 
     static boolean largeShulkerBoxEnabled() {
         //#if MC >= 11404 && MC <= 260200
         if (!resolved) resolve();
-        return largeShulkerBoxEnabled;
+        try {
+            if (lazyIsEnabled != null) return Boolean.TRUE.equals(lazyIsEnabled.invoke(null, lazyRule));
+            return legacyField != null && legacyField.getBoolean(null);
+        } catch (ReflectiveOperationException | LinkageError ignored) { return false; }
         //#else
         //$$ return false;
         //#endif
     }
     static void reset() {
-        resolved = false;
-        largeShulkerBoxEnabled = false;
+        //#if MC >= 11404 && MC <= 260200
+        resolved = false; lazyIsEnabled = null; lazyRule = null; legacyField = null;
+        //#endif
     }
 
     //#if MC >= 11404 && MC <= 260200
     private static void resolve() {
         resolved = true;
-        largeShulkerBoxEnabled = false;
         if (!FabricLoader.getInstance().isModLoaded(AMS_MOD_ID)) return;
-        Boolean lazyState = readLazyState();
-        if (lazyState != null) {
-            largeShulkerBoxEnabled = lazyState;
-            return;
-        }
-        largeShulkerBoxEnabled = readLegacyState();
-    }
-    /** Prefer AMS' exact lazy runtime state; reflection keeps AMS optional. */
-    private static Boolean readLazyState() {
         try {
             Class<?> lazySettings = Class.forName(AMS_LAZY_SETTINGS), ruleClass = Class.forName(AMS_LAZY_RULE);
-            Object rule = ruleClass.getField("LARGE_SHULKER_BOX").get(null);
-            Method isEnabled = lazySettings.getMethod("isEnabled", ruleClass);
-            Object result = isEnabled.invoke(null, rule);
-            return result instanceof Boolean ? (Boolean) result : null;
-        } catch (ReflectiveOperationException | LinkageError ignored) { return null; }
-    }
-    /** Compatibility fallback for older AMS releases. */
-    private static boolean readLegacyState() {
-        try {
-            Class<?> settings = Class.forName(AMS_SETTINGS);
-            Field field = settings.getField("largeShulkerBox");
-            return field.getBoolean(null);
-        } catch (ReflectiveOperationException | LinkageError ignored) { return false; }
+            lazyRule = ruleClass.getField("LARGE_SHULKER_BOX").get(null);
+            lazyIsEnabled = lazySettings.getMethod("isEnabled", ruleClass);
+            return;
+        } catch (ReflectiveOperationException | LinkageError ignored) {}
+        try { legacyField = Class.forName(AMS_SETTINGS).getField("largeShulkerBox"); }
+        catch (ReflectiveOperationException | LinkageError ignored) { legacyField = null; }
     }
     //#endif
 }

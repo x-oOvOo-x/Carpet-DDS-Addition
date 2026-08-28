@@ -14,24 +14,24 @@ import carpetddsaddition.feature.undoredo.UndoCause;
 //$$ import net.minecraft.server.level.ServerLevel;
 //$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.world.entity.Entity;
-
+//$$
 //#if MC >= 12111
 //$$ import net.minecraft.world.entity.vehicle.minecart.MinecartTNT;
 //#else
 //$$ import net.minecraft.world.entity.vehicle.MinecartTNT;
 //#endif
-
+//$$
 //$$ import net.minecraft.world.item.ItemStack;
 //$$ import net.minecraft.world.item.Items;
 //$$ import net.minecraft.world.level.Level;
 //$$ import net.minecraft.world.level.block.BaseFireBlock;
-
+//$$
 //#if MC >= 260102
 //$$ import net.minecraft.world.level.block.SpreadingSnowyBlock;
 //#else
 //$$ import net.minecraft.world.level.block.SpreadingSnowyDirtBlock;
 //#endif
-
+//$$
 //$$ import net.minecraft.world.phys.AABB;
 //$$ import net.minecraft.world.phys.BlockHitResult;
 //#endif
@@ -49,7 +49,7 @@ public final class UndoPlayerActionCompat {
      */
 
     //#if MC >= 12109
-
+    //$$
     //$$ public static void beforeDestroyBlock(
     //$$         ServerPlayer player,
     //$$         BlockPos pos
@@ -88,7 +88,7 @@ public final class UndoPlayerActionCompat {
     //$$             player
     //$$     );
     //$$ }
-
+    //$$
     //#endif
 
 
@@ -99,7 +99,7 @@ public final class UndoPlayerActionCompat {
      */
 
     //#if MC >= 12109
-
+    //$$
     //$$ public static void beforeUseItemOn(
     //$$         ServerPlayer player,
     //$$         Level level,
@@ -160,7 +160,7 @@ public final class UndoPlayerActionCompat {
     //$$             player
     //$$     );
     //$$ }
-
+    //$$
     //#endif
 
 
@@ -171,7 +171,7 @@ public final class UndoPlayerActionCompat {
      */
 
     //#if MC >= 12109
-
+    //$$
     //$$ public static void beforeUseItem(
     //$$         ServerPlayer player
     //$$ ) {
@@ -188,7 +188,7 @@ public final class UndoPlayerActionCompat {
     //$$             player
     //$$     );
     //$$ }
-
+    //$$
     //#endif
 
 
@@ -199,7 +199,7 @@ public final class UndoPlayerActionCompat {
      */
 
     //#if MC >= 12109
-
+    //$$
     //$$ private static long armSupportedTntMinecarts(
     //$$         ServerLevel level,
     //$$         BlockPos brokenPos,
@@ -328,7 +328,7 @@ public final class UndoPlayerActionCompat {
     //$$                     brokenPos
     //$$             );
     //$$ }
-
+    //$$
     //#endif
 
 
@@ -339,7 +339,7 @@ public final class UndoPlayerActionCompat {
      */
 
     //#if MC >= 12109
-
+    //$$
     //$$ private static void armEntitiesInPlacedFire(
     //$$         ServerLevel level,
     //$$         BlockPos firePos
@@ -402,7 +402,7 @@ public final class UndoPlayerActionCompat {
     //$$         );
     //$$     }
     //$$ }
-
+    //$$
     //#endif
 
 
@@ -413,7 +413,7 @@ public final class UndoPlayerActionCompat {
      */
 
     //#if MC >= 12109
-
+    //$$
     //$$ private static boolean isFireStarter(
     //$$         ItemStack stack
     //$$ ) {
@@ -429,28 +429,28 @@ public final class UndoPlayerActionCompat {
     //$$         ServerLevel level,
     //$$         BlockPos pos
     //$$ ) {
-
+    //$$
     //#if MC >= 260102
-
+    //$$
     //$$     return level
     //$$             .getBlockState(
     //$$                     pos
     //$$             )
     //$$             .getBlock()
     //$$             instanceof SpreadingSnowyBlock;
-
+    //$$
     //#else
-
+    //$$
     //$$     return level
     //$$             .getBlockState(
     //$$                     pos
     //$$             )
     //$$             .getBlock()
     //$$             instanceof SpreadingSnowyDirtBlock;
-
+    //$$
     //#endif
-
+    //$$
     //$$ }
-
+    //$$
     //#endif
 }

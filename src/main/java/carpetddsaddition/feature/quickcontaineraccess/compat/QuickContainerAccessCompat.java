@@ -24,84 +24,165 @@ public final class QuickContainerAccessCompat {
 
     public static boolean tryOpenInHand(Player player, ItemStack stack, InteractionHand hand) {
         //#if MC >= 11404 && MC <= 260200
-        if (!QuickContainerAccess.enabled() || !(player instanceof ServerPlayer) || player instanceof EntityPlayerMPFake) return false;
+        if (!QuickContainerAccess.enabled() || !(player instanceof ServerPlayer) || player instanceof EntityPlayerMPFake || player.isSpectator()) return false;
         ServerPlayer serverPlayer = (ServerPlayer) player;
         Inventory inventory = QuickContainerAccessSession.inventory(player);
         QuickContainerAccessItems.MenuKind kind = QuickContainerAccessItems.kindOf(stack);
         if (kind == null || !QuickContainerAccessItems.canOpenInHand(kind, stack)) return false;
-        int sourceSlot = hand == InteractionHand.MAIN_HAND ? QuickContainerAccessSession.selectedSlot(inventory)
-                : QuickContainerAccessSession.offhandSlot();
-        QuickContainerAccessSession.SourceRef sourceRef = QuickContainerAccessSession.rootRef(serverPlayer, inventory, sourceSlot, stack);
-        return QuickContainerAccessMenus.open(serverPlayer, sourceRef, kind);
+        int sourceSlot = hand == InteractionHand.MAIN_HAND ? QuickContainerAccessSession.selectedSlot(inventory) : QuickContainerAccessSession.offhandSlot();
+        return QuickContainerAccessMenus.open(serverPlayer, QuickContainerAccessSession.rootRef(serverPlayer, inventory, sourceSlot, stack), kind);
         //#else
         //$$ return false;
         //#endif
     }
 
+    public static boolean openPlayerInventorySlot(ServerPlayer player, int inventorySlot) {
+        //#if MC >= 11404 && MC <= 260200
+        if (!validCreativeInventorySlot(player, inventorySlot)) return false;
+        Inventory inventory = QuickContainerAccessSession.inventory(player);
+        ItemStack target = inventory.getItem(inventorySlot);
+        QuickContainerAccessItems.MenuKind kind = QuickContainerAccessItems.kindOf(target);
+        if (target.isEmpty() || target.getCount() != 1 || kind == null) return false;
+        QuickContainerAccessSession.SourceRef ref = QuickContainerAccessSession.rootRef(player, inventory, inventorySlot, target);
+        return QuickContainerAccessMenus.open(player, ref, kind);
+        //#else
+        //$$ return false;
+        //#endif
+    }
+
+    /** Runs one Creative survival-inventory storage transaction without changing normal Survival cursor state. */
+    public static ItemStack handleCreativeStorageClick(ServerPlayer player, int inventorySlot, ItemStack creativeCarried) {
+        //#if MC >= 11404 && MC <= 260200
+        if (!validCreativeInventorySlot(player, inventorySlot) || creativeCarried == null || creativeCarried.isEmpty()) return null;
+        Inventory inventory = QuickContainerAccessSession.inventory(player);
+        AbstractContainerMenu menu = player.inventoryMenu;
+        int menuSlot = inventoryMenuSlot(menu, inventory, inventorySlot);
+        if (menuSlot < 0) return null;
+        ItemStack previous = QuickContainerAccessSession.carried(menu, player);
+        QuickContainerAccessSession.setCarried(menu, player, creativeCarried);
+        try {
+            if (!QuickContainerAccessStorage.handleStorageInteraction(player, player, menu, menuSlot, 1, "PICKUP")) return null;
+            ItemStack result = QuickContainerAccessSession.carried(menu, player);
+            return result.isEmpty() ? ItemStack.EMPTY : result.copy();
+        } finally {
+            QuickContainerAccessSession.setCarried(menu, player, previous);
+            menu.broadcastChanges();
+        }
+        //#else
+        //$$ return null;
+        //#endif
+    }
+
     public static boolean handleInventoryClick(AbstractContainerMenu menu, int slotId, int button, Object clickType, Player player) {
         //#if MC >= 11404 && MC <= 260200
-        if (!(player instanceof ServerPlayer) || player instanceof EntityPlayerMPFake) return false;
+        if (!(player instanceof ServerPlayer) || player instanceof EntityPlayerMPFake || menu == null || !menu.stillValid(player)) return false;
         ServerPlayer serverPlayer = (ServerPlayer) player;
-        // Resolve surviving sessions before the enabled fast-path so vanilla never mutates an invalid QCA menu.
         QuickContainerAccessSession.Session active = QuickContainerAccessSession.get(menu);
-        if (active != null && !active.valid()) {
-            serverPlayer.closeContainer();
-            return true;
-        }
+        if (active != null && !active.valid()) { serverPlayer.closeContainer(); return true; }
         if (!QuickContainerAccess.enabled()) return false;
-        Inventory playerInventory = QuickContainerAccessSession.inventory(serverPlayer);
+        boolean rightPickup = isRightPickup(clickType, button), validSlot = validSlot(menu, slotId);
+        if (validSlot && QuickContainerAccessWorkstations.isOwnSlot(menu, slotId, player)) return false;
+        ItemStack carried = QuickContainerAccessSession.carried(menu, serverPlayer);
 
         if (active != null) {
-            if (active.sourceRef.isProtectedMenuSlot(menu, slotId)
-                    || active.sourceRef.isProtectedPlayerSwap(button, clickType)
+            if (QuickContainerAccessStorage.handleOpenShulkerMerge(serverPlayer, menu, active, slotId, button, clickType)) return true;
+            if (rightPickup && carried.isEmpty()) {
+                QuickContainerAccessSession.PathNode sourceNode = active.path.findSourceMenuSlot(menu, slotId);
+                if (sourceNode != null) {
+                    if (sourceNode == active.path) { serverPlayer.closeContainer(); return true; }
+                    if (sourceNode.kind == QuickContainerAccessItems.MenuKind.ENDER_CHEST) {
+                        QuickContainerAccessSession.syncMenu(serverPlayer, menu);
+                        return QuickContainerAccessMenus.navigateBack(serverPlayer, menu, sourceNode);
+                    }
+                }
+            }
+            if (active.sourceRef.isProtectedMenuSlot(menu, slotId) || active.sourceRef.isProtectedPlayerSwap(button, clickType)
                     || QuickContainerAccessSession.isPickupAllSourceCollect(menu, clickType, active)) return true;
 
-            if (isRightPickup(clickType, button) && QuickContainerAccessSession.carried(menu, serverPlayer).isEmpty()
-                    && validSlot(menu, slotId)) {
+            if (rightPickup && carried.isEmpty() && validSlot) {
                 Slot clicked = menu.getSlot(slotId);
                 ItemStack target = clicked.getItem();
-                if (!target.isEmpty() && target.getCount() == 1) {
+                if (!target.isEmpty() && target.getCount() == 1 && QuickContainerAccessSession.safeDirectSlot(serverPlayer, clicked)) {
                     QuickContainerAccessItems.MenuKind nextKind = QuickContainerAccessItems.kindOf(target);
-                    QuickContainerAccessSession.SourceRef nextRef =
-                            QuickContainerAccessSession.sourceRefForActiveClick(active, clicked, target, nextKind);
-                    if (nextKind != null && nextRef != null) {
+                    QuickContainerAccessSession.SourceRef nextRef = QuickContainerAccessSession.sourceRefForActiveClick(active, clicked, target, nextKind);
+                    if (nextRef != null) {
+                        if (nextKind == QuickContainerAccessItems.MenuKind.ENDER_CHEST) {
+                            QuickContainerAccessSession.PathNode destination = active.path.findOpenedContainer(nextRef.inventoryOwner.getEnderChestInventory());
+                            if (destination != null) { QuickContainerAccessSession.syncMenu(serverPlayer, menu); return QuickContainerAccessMenus.navigateBack(serverPlayer, menu, destination); }
+                        }
                         QuickContainerAccessSession.syncMenu(serverPlayer, menu);
                         return QuickContainerAccessMenus.switchOpen(serverPlayer, menu, nextRef, target, nextKind);
                     }
                 }
             }
-            if (QuickContainerAccessStorage.handleStorageInteraction(serverPlayer, menu, slotId, button, clickType, playerInventory)) return true;
-            return false;
-        }
-
-        if (QuickContainerAccessStorage.handleStorageInteraction(serverPlayer, menu, slotId, button, clickType, playerInventory)) return true;
-        if (!isRightPickup(clickType, button) || !validSlot(menu, slotId)) return false;
-
-        Slot slot = menu.getSlot(slotId);
-        ItemStack target = slot.getItem();
-        ItemStack carried = QuickContainerAccessSession.carried(menu, serverPlayer);
-        if (slot.container == playerInventory) {
-            if (carried.isEmpty() && !target.isEmpty() && target.getCount() == 1) {
-                QuickContainerAccessItems.MenuKind kind = QuickContainerAccessItems.kindOf(target);
-                if (kind != null) {
-                    QuickContainerAccessSession.SourceRef ref = QuickContainerAccessSession.rootRef(serverPlayer, playerInventory,
-                            QuickContainerAccessSession.containerSlot(slot), target);
-                    QuickContainerAccessSession.syncMenu(serverPlayer, menu);
-                    return QuickContainerAccessMenus.switchOpen(serverPlayer, menu, ref, target, kind);
-                }
+            if (validSlot) {
+                Slot clicked = menu.getSlot(slotId);
+                ServerPlayer owner = clicked.container == active.playerInventory ? serverPlayer : active.inventoryOwner;
+                if (QuickContainerAccessStorage.handleStorageInteraction(serverPlayer, owner, menu, slotId, button, clickType)) return true;
             }
             return false;
         }
 
-        // Ender Chest nested exception: own Ender Chest -> single Shulker Box.
-        if (slot.container == serverPlayer.getEnderChestInventory() && carried.isEmpty() && !target.isEmpty() && target.getCount() == 1
-                && QuickContainerAccessItems.kindOf(target) == QuickContainerAccessItems.MenuKind.SHULKER) {
-            QuickContainerAccessSession.SourceRef ref = QuickContainerAccessSession.rootRef(serverPlayer,
-                    serverPlayer.getEnderChestInventory(), QuickContainerAccessSession.containerSlot(slot), target);
-            QuickContainerAccessSession.syncMenu(serverPlayer, menu);
-            return QuickContainerAccessMenus.switchOpen(serverPlayer, menu, ref, target, QuickContainerAccessItems.MenuKind.SHULKER);
+        if (validSlot) {
+            Slot slot = menu.getSlot(slotId);
+            ServerPlayer owner = QuickContainerAccessSession.ownerFor(serverPlayer, menu, slot.container);
+            if (QuickContainerAccessStorage.handleStorageInteraction(serverPlayer, owner, menu, slotId, button, clickType)) return true;
         }
-        return false;
+        if (!rightPickup || !validSlot || !carried.isEmpty()) return false;
+        Slot slot = menu.getSlot(slotId);
+        if (!QuickContainerAccessSession.safeDirectSlot(serverPlayer, slot)) return false;
+        ItemStack target = slot.getItem();
+        if (target.isEmpty() || target.getCount() != 1) return false;
+        QuickContainerAccessItems.MenuKind kind = QuickContainerAccessItems.kindOf(target);
+        if (kind == null) return false;
+        QuickContainerAccessSession.SourceRef ref = QuickContainerAccessSession.rootRefForMenu(serverPlayer, menu, slot, target);
+        QuickContainerAccessNavigation.attachSupportedRoot(ref, menu, slot, serverPlayer);
+        if (kind == QuickContainerAccessItems.MenuKind.ENDER_CHEST && ref.parentPath != null
+                && ref.parentPath.findOpenedContainer(ref.inventoryOwner.getEnderChestInventory()) != null) return true;
+        QuickContainerAccessSession.syncMenu(serverPlayer, menu);
+        return QuickContainerAccessMenus.switchOpen(serverPlayer, menu, ref, target, kind);
+        //#else
+        //$$ return false;
+        //#endif
+    }
+
+    public static boolean canUseDedicatedOpenClick(AbstractContainerMenu menu, int slotId, Player player) {
+        //#if MC >= 11404 && MC <= 260200
+        if (!(player instanceof ServerPlayer) || player instanceof EntityPlayerMPFake || !QuickContainerAccess.enabled()
+                || menu == null || !menu.stillValid(player) || !validSlot(menu, slotId)
+                || QuickContainerAccessWorkstations.isOwnSlot(menu, slotId, player)
+                || !QuickContainerAccessSession.carried(menu, player).isEmpty()) return false;
+        Slot slot = menu.getSlot(slotId); ItemStack target = slot.getItem();
+        return !target.isEmpty() && target.getCount() == 1 && QuickContainerAccessItems.kindOf(target) != null
+                && QuickContainerAccessSession.safeDirectSlot((ServerPlayer) player, slot);
+        //#else
+        //$$ return false;
+        //#endif
+    }
+
+    public static boolean canUseDedicatedStorageClick(AbstractContainerMenu menu, int slotId, Player player) {
+        //#if MC >= 11404 && MC <= 260200
+        return player instanceof ServerPlayer && !(player instanceof EntityPlayerMPFake) && QuickContainerAccess.enabled()
+                && menu != null && menu.stillValid(player) && validSlot(menu, slotId)
+                && !QuickContainerAccessWorkstations.isOwnSlot(menu, slotId, player)
+                && QuickContainerAccessSession.safeDirectSlot((ServerPlayer) player, menu.getSlot(slotId));
+        //#else
+        //$$ return false;
+        //#endif
+    }
+
+    public static boolean canNavigateBack(AbstractContainerMenu menu, Player player) {
+        //#if MC >= 11404 && MC <= 260200
+        return player instanceof ServerPlayer && !(player instanceof EntityPlayerMPFake)
+                && QuickContainerAccessNavigation.canNavigateBack(QuickContainerAccessSession.get(menu));
+        //#else
+        //$$ return false;
+        //#endif
+    }
+    public static boolean navigateBack(ServerPlayer player, int containerId) {
+        //#if MC >= 11404 && MC <= 260200
+        if (player == null || player.isSpectator() || player.containerMenu.containerId != containerId) return false;
+        return QuickContainerAccessNavigation.navigateBack(player, player.containerMenu);
         //#else
         //$$ return false;
         //#endif
@@ -126,8 +207,7 @@ public final class QuickContainerAccessCompat {
     }
     public static void resetRuntimeState() {
         //#if MC >= 11404 && MC <= 260200
-        QuickContainerAccessSession.clearAll();
-        QuickContainerAccessAmsCompat.reset();
+        QuickContainerAccessSession.clearAll(); QuickContainerAccessNavigation.clear(); QuickContainerAccessAmsCompat.reset();
         //#endif
     }
     public static boolean handlePortableAnvilUse(AbstractContainerMenu menu) {
@@ -139,9 +219,19 @@ public final class QuickContainerAccessCompat {
     }
 
     //#if MC >= 11404 && MC <= 260200
-    private static boolean isRightPickup(Object clickType, int button) {
-        return button == 1 && "PICKUP".equals(QuickContainerAccessSession.enumName(clickType));
+    private static boolean validCreativeInventorySlot(ServerPlayer player, int slot) {
+        return player != null && !(player instanceof EntityPlayerMPFake) && !player.isSpectator() && player.isCreative()
+                && player.containerMenu == player.inventoryMenu && QuickContainerAccess.enabled()
+                && slot >= 0 && slot < QuickContainerAccessSession.inventory(player).getContainerSize();
     }
+    private static int inventoryMenuSlot(AbstractContainerMenu menu, Inventory inventory, int inventorySlot) {
+        for (int i = 0; i < menu.slots.size(); i++) {
+            Slot slot = menu.getSlot(i);
+            if (slot.container == inventory && QuickContainerAccessSession.containerSlot(slot) == inventorySlot) return i;
+        }
+        return -1;
+    }
+    private static boolean isRightPickup(Object clickType, int button) { return button == 1 && "PICKUP".equals(QuickContainerAccessSession.enumName(clickType)); }
     private static boolean validSlot(AbstractContainerMenu menu, int slotId) { return slotId >= 0 && slotId < menu.slots.size(); }
     //#endif
 }

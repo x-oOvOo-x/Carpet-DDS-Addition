@@ -3,7 +3,7 @@ name: Build Carpet DDS Addition
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
     paths:
       - 'src/**'
       - 'versions/**'
@@ -11,8 +11,6 @@ on:
       - 'gradle/**'
       - 'gradlew'
       - 'gradlew.bat'
-      - 'docs/**'
-      - 'README*.md'
       - 'build.gradle'
       - 'common.gradle'
       - 'settings.gradle'
@@ -20,6 +18,23 @@ on:
       - 'gradle.properties'
       - '.github/workflows/**'
   pull_request:
+    paths:
+      - 'src/**'
+      - 'versions/**'
+      - 'scripts/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'build.gradle'
+      - 'common.gradle'
+      - 'settings.gradle'
+      - 'settings.json'
+      - 'gradle.properties'
+      - '.github/workflows/**'
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -33,10 +48,12 @@ jobs:
           java-version: '25'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Verify framework invariants
-        run: python3 scripts/verify-framework.py
-      - name: Build every Minecraft node
+      - name: Validate release publisher scripts
+        run: python3 -m py_compile scripts/publish-modrinth.py scripts/publish-curseforge.py
+      - name: Verify and build every Minecraft node
         run: ./gradlew buildAndGather --stacktrace
+      - name: Verify preprocessor round-trip
+        run: python3 scripts/verify-preprocessor-roundtrip.py --skip-build
       - name: Upload release jars
         uses: actions/upload-artifact@v4
         with:

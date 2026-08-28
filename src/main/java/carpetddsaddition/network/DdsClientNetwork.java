@@ -7,7 +7,10 @@
 package carpetddsaddition.network;
 
 import carpetddsaddition.CarpetDDSAddition;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 //#if MC >= 11404 && MC <= 260200
 import net.minecraft.client.Minecraft;
@@ -26,7 +29,15 @@ import net.minecraft.network.protocol.game.ServerboundCustomPayloadPacket;
 public final class DdsClientNetwork {
     private static final long HELLO_RETRY_NANOS = 1_000_000_000L;
     private static final DdsClientState STATE = new DdsClientState();
+    private static final Map<String, Consumer<CompoundTag>> S2C_HANDLERS = new LinkedHashMap<>();
     private DdsClientNetwork() {}
+
+    public static synchronized void registerS2CHandler(String packetId, Consumer<CompoundTag> handler) {
+        if (!DdsPacketRegistry.localS2CPackets().contains(packetId) || handler == null)
+            throw new IllegalArgumentException("Invalid DDS S2C client handler: " + packetId);
+        if (S2C_HANDLERS.putIfAbsent(packetId, handler) != null)
+            throw new IllegalStateException("Duplicate DDS S2C client handler: " + packetId);
+    }
 
     public static void onConnectedToServer() {
         STATE.resetProtocolState();
@@ -65,7 +76,13 @@ public final class DdsClientNetwork {
     //#if MC >= 11404 && MC <= 260200
     public static void handlePayload(DdsProtocol.Payload payload) {
         Minecraft.getInstance().execute(() -> {
-            if (DdsProtocol.HELLO_S2C.equals(payload.packetId())) handleHello(payload.data());
+            if (DdsProtocol.HELLO_S2C.equals(payload.packetId())) {
+                handleHello(payload.data());
+                return;
+            }
+            Consumer<CompoundTag> handler;
+            synchronized (DdsClientNetwork.class) { handler = S2C_HANDLERS.get(payload.packetId()); }
+            if (handler != null && STATE.isServerProtocolActive()) handler.accept(payload.data());
         });
     }
 

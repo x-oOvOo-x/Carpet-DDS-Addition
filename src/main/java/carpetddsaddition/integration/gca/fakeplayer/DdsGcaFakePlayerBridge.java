@@ -21,23 +21,34 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$     private static final Field OPEN_ENDER_CHEST_RULE_FIELD = resolveRuleField("openFakePlayerEnderChest");
 //$$     private DdsGcaFakePlayerBridge() {}
 //$$
-//$$     public static boolean shouldUseDdsMenu(ServerPlayer viewer) {
-//$$         return SAFE_DIRECT_INVENTORY && isGcaInventoryRuleEnabled() && DdsServerNetwork.doesClientSupport(viewer, DdsFakePlayerPackets.ACTION_C2S);
+//$$     public static boolean canEnhanceInventory(ServerPlayer viewer) {
+//$$         return clientSupportsEnhancedMenu(viewer) && isGcaInventoryRuleEnabled();
+//$$     }
+//$$     public static boolean canEnhanceEnderChest(ServerPlayer viewer) {
+//$$         return clientSupportsEnhancedMenu(viewer) && shouldOpenGcaEnderChest(viewer);
+//$$     }
+//$$     private static boolean clientSupportsEnhancedMenu(ServerPlayer viewer) {
+//$$         return SAFE_DIRECT_INVENTORY && DdsServerNetwork.doesClientSupport(viewer, DdsFakePlayerPackets.ACTION_C2S);
 //$$     }
 //$$
-//$$     /** Mirrors GCA's openFakePlayerEnderChest rule semantics. */
+//$$     /** Mirrors GCA's openFakePlayerEnderChest rule semantics at interaction time. */
 //$$     public static boolean shouldOpenGcaEnderChest(ServerPlayer viewer) {
+//$$         if (!SAFE_DIRECT_INVENTORY) return false;
 //$$         String value = readStringRule(OPEN_ENDER_CHEST_RULE_FIELD);
 //$$         if ("true".equals(value)) return true;
 //$$         if (!"ender_chest".equals(value)) return false;
 //$$         return viewer.getMainHandItem().is(Items.ENDER_CHEST) || viewer.getOffhandItem().is(Items.ENDER_CHEST);
 //$$     }
 //$$
-//$$     private static boolean isGcaInventoryRuleEnabled() {
+//$$     public static boolean isGcaInventoryRuleEnabled() {
 //$$         Field field = OPEN_INVENTORY_RULE_FIELD;
 //$$         if (field == null) return false;
 //$$         try { return field.getBoolean(null); }
 //$$         catch (IllegalAccessException | IllegalArgumentException ignored) { return false; }
+//$$     }
+//$$     public static boolean isGcaEnderChestRuleEnabled() {
+//$$         String value = readStringRule(OPEN_ENDER_CHEST_RULE_FIELD);
+//$$         return "true".equals(value) || "ender_chest".equals(value);
 //$$     }
 //$$
 //$$     private static String readStringRule(Field field) {
@@ -50,7 +61,6 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$         if (!GCA_LOADED) return false;
 //$$         try {
 //$$             ClassLoader loader = DdsGcaFakePlayerBridge.class.getClassLoader();
-//$$             // Legacy GCA used a detached shadow inventory; direct DDS writes are unsafe there.
 //$$             try { Class.forName("dev.dubhe.gugle.carpet.tools.FakePlayer", false, loader); return false; }
 //$$             catch (ClassNotFoundException ignored) {}
 //$$             Class<?> gcaPlayer = Class.forName("dev.dubhe.gugle.carpet.tools.player.IGcaPlayer", false, loader);

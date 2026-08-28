@@ -52,13 +52,14 @@ public final class QuickContainerAccessItems {
         //$$ return false;
         //#endif
     }
-    public static boolean isStorageHostCandidate(ItemStack stack) {
+    public static boolean isStorageHost(ItemStack stack) {
         //#if MC >= 11404 && MC <= 260200
-        return !stack.isEmpty() && stack.getCount() == 1 && (isShulker(stack) || isItem(stack, Items.ENDER_CHEST));
+        return !stack.isEmpty() && (isShulker(stack) || isItem(stack, Items.ENDER_CHEST));
         //#else
         //$$ return false;
         //#endif
     }
+    public static boolean isStorageHostCandidate(ItemStack stack) { return stack.getCount() == 1 && isStorageHost(stack); }
     static boolean isItem(ItemStack stack, Item item) {
         //#if MC >= 11701
         //$$ return stack.is(item);

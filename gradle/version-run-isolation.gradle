@@ -1,0 +1,7 @@
+/* Keep normal Loom client/server runs isolated per Minecraft version. */
+afterEvaluate {
+    ['client', 'server'].each { name ->
+        def run = loom.runs.findByName(name)
+        if (run != null) run.runDir "../../run/${project.name}"
+    }
+}
