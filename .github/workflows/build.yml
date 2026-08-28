@@ -48,6 +48,8 @@ jobs:
           java-version: '25'
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Ensure Gradle wrapper is executable
+        run: chmod +x gradlew
       - name: Validate release publisher scripts
         run: python3 -m py_compile scripts/publish-modrinth.py scripts/publish-curseforge.py
       - name: Verify and build every Minecraft node
