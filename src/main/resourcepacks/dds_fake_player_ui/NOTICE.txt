@@ -1,0 +1,15 @@
+DDS Fake Player UI - CozyUI+ adaptation
+
+This optional built-in resource pack contains visual assets adapted from CozyUI+.
+
+Upstream project: CozyUI+
+Author: 零雾〇五 Fogg05
+Source: https://github.com/Fogg05/CozyUI-Plus
+Upstream source revision used for attribution review: 42cc4749f7b4663e132af57993e3d66efd8791ba
+License: GNU General Public License version 3 (GPL-3.0-only)
+
+This is a modified adaptation. DDS contributors adapted the relevant CozyUI+ assets for Carpet DDS Addition's fake-player user interface. The DDS adaptation was updated on 2026-09-10.
+
+The CozyUI+-derived resource-pack portion remains distributed under GPL-3.0. See LICENSE-CozyUI-Plus.txt in this resource pack for the complete license text.
+
+Carpet DDS Addition's Java code and other independently authored DDS material remain under their respective repository licenses; this notice applies specifically to the CozyUI+-derived resource-pack material.

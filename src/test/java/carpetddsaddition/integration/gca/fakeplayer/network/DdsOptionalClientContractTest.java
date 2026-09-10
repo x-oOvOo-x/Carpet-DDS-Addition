@@ -35,6 +35,16 @@ final class DdsOptionalClientContractTest {
     @Test void cozyUiAndNegotiatedOpenProtocolArePresent() throws IOException {
         assertTrue(Files.exists(ROOT.resolve("gradle/fake-player-ui-resource-pack.gradle")));
         assertTrue(Files.isDirectory(ROOT.resolve("src/main/resourcepacks/dds_fake_player_ui/assets")));
+        Path notice = ROOT.resolve("src/main/resourcepacks/dds_fake_player_ui/NOTICE.txt");
+        Path license = ROOT.resolve("src/main/resourcepacks/dds_fake_player_ui/LICENSE-CozyUI-Plus.txt");
+        assertTrue(Files.isRegularFile(notice));
+        assertTrue(Files.isRegularFile(license));
+        assertTrue(Files.readString(notice).contains("零雾〇五 Fogg05"));
+        assertTrue(Files.readString(notice).contains("https://github.com/Fogg05/CozyUI-Plus"));
+        assertTrue(Files.readString(license).contains("GNU GENERAL PUBLIC LICENSE"));
+        String packBuild = read("gradle/fake-player-ui-resource-pack.gradle");
+        assertTrue(packBuild.contains("'NOTICE.txt'"));
+        assertTrue(packBuild.contains("'LICENSE-CozyUI-Plus.txt'"));
         String initializer = read("src/main/java/carpetddsaddition/platform/fabric/DdsFabricClientInitializer.java");
         assertTrue(initializer.contains("DdsBuiltinResourcePackCompat.register()"));
         String network = read("src/main/java/carpetddsaddition/integration/gca/fakeplayer/network/DdsFakePlayerServerNetwork.java");

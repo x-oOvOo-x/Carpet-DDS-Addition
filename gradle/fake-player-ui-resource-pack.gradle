@@ -44,12 +44,20 @@ afterEvaluate {
                     ? "\"description\": \"DDS Fake Player UI - CozyUI+ (MC ${minecraftVersion})\",\n    \"min_format\": ${packFormat},\n    \"max_format\": ${packFormat}"
                     : "\"pack_format\": ${packFormat},\n    \"description\": \"DDS Fake Player UI - CozyUI+ (MC ${minecraftVersion})\""
             new File(out, 'pack.mcmeta').setText("{\n  \"pack\": {\n    ${packSection}\n  }\n}\n", 'UTF-8')
-            new File(out, 'README.txt').setText("""DDS Fake Player UI - CozyUI+ optional built-in resource pack
+            new File(out, 'README.txt').setText("""DDS Fake Player UI - CozyUI+ adaptation
 Minecraft: ${minecraftVersion}
 
-This optional pack provides the CozyUI+ theme for DDS fake-player inventory screens.
-It is disabled by default. Enable dds_fake_player_ui in Options -> Resource Packs
-to use CozyUI+.
+Based on CozyUI+
+Author: 零雾〇五 Fogg05
+Source: https://github.com/Fogg05/CozyUI-Plus
+License: GNU General Public License version 3 (GPL-3.0-only)
+
+This is a modified adaptation for Carpet DDS Addition's fake-player UI.
+See NOTICE.txt for attribution and modification details and
+LICENSE-CozyUI-Plus.txt for the complete GPL-3.0 license text.
+
+This optional pack is disabled by default. Enable dds_fake_player_ui in
+Options -> Resource Packs to use CozyUI+.
 
 The default DDS UI assets remain unchanged and are used whenever this optional
 pack is disabled. External packs can override the same carpet-dds-addition
@@ -87,7 +95,7 @@ No fake-player action button uses a Minecraft item texture or item model.
         dependsOn(preparePackMeta)
         from(metaDir) { into packPath }
         from(packSource) {
-            include 'assets/**'
+            include 'assets/**', 'NOTICE.txt', 'LICENSE-CozyUI-Plus.txt'
             into packPath
         }
         from(rootProject.file('src/main/resources/assets/carpet-dds-addition/icon.png')) {
