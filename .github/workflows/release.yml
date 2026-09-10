@@ -100,7 +100,7 @@ jobs:
         run: echo Skipping CurseForge because its token/project is not configured.
 
   release-cloud:
-    if: ${{ github.repository == 'x-oOvOo-x/Carpet-DDS-Addition' && vars.RUNNER_MODE == 'cloud' }}
+    if: ${{ github.repository == 'x-oOvOo-x/Carpet-DDS-Addition' && (vars.RUNNER_MODE == 'cloud' || vars.RUNNER_MODE == '') }}
     runs-on: windows-latest
     env:
       MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}

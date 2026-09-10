@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   build-self-hosted:
-    if: ${{ vars.RUNNER_MODE == 'self-hosted' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ (vars.RUNNER_MODE == 'self-hosted' || (vars.RUNNER_MODE == '' && github.repository == 'x-oOvOo-x/Carpet-DDS-Addition-Dev')) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +68,7 @@ jobs:
         run: py -3 scripts/verify-preprocessor-roundtrip.py --skip-build
 
   build-cloud:
-    if: ${{ vars.RUNNER_MODE == 'cloud' }}
+    if: ${{ vars.RUNNER_MODE == 'cloud' || (vars.RUNNER_MODE == '' && github.repository == 'x-oOvOo-x/Carpet-DDS-Addition') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
