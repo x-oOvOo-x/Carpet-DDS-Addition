@@ -7,6 +7,7 @@
 package carpetddsaddition.platform.minecraft.recipe;
 
 //#if MC >= 12103
+//$$ import net.minecraft.core.HolderLookup;
 //$$ import net.minecraft.world.item.crafting.RecipeMap;
 //#endif
 
@@ -14,5 +15,6 @@ package carpetddsaddition.platform.minecraft.recipe;
 public interface RecipeManagerBridge {
     //#if MC >= 12103
     //$$ void carpetDDSAddition$setRecipes(RecipeMap recipes);
+    //$$ HolderLookup.Provider carpetDDSAddition$getRegistries();
     //#endif
 }

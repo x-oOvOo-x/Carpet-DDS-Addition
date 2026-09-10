@@ -6,11 +6,13 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpet.patches.EntityPlayerMPFake;
 //$$ import carpetddsaddition.core.inventory.DdsEnderMenuFactory;
 //$$ import carpetddsaddition.core.inventory.DdsInventoryOwnerView;
 //$$ import carpetddsaddition.feature.fakeplayerinventory.FakePlayerInventory;
+//$$ import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerPackets;
+//$$ import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerServerNetwork;
 //$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.world.Container;
 //$$ import net.minecraft.world.SimpleContainer;
@@ -19,6 +21,7 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$ import net.minecraft.world.inventory.AbstractContainerMenu;
 //$$ import net.minecraft.world.inventory.ChestMenu;
 //$$ import net.minecraft.world.inventory.ContainerData;
+//$$ import net.minecraft.world.inventory.MenuType;
 //$$ import net.minecraft.world.inventory.SimpleContainerData;
 //$$
 //$$ public final class DdsFakePlayerEnderChestMenu extends ChestMenu implements DdsInventoryOwnerView, DdsEnderMenuFactory {
@@ -27,20 +30,21 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$     private final ContainerData state;
 //$$     private final int rows;
 //$$
-//$$     public static DdsFakePlayerEnderChestMenu create(int id, Inventory viewer, EntityPlayerMPFake target) {
+//$$     public static DdsFakePlayerEnderChestMenu create(int id, Inventory viewer, EntityPlayerMPFake target, ServerPlayer menuViewer) {
 //$$         int size = target.getEnderChestInventory().getContainerSize(), rows = size / 9;
-//$$         return rows == 3 || rows == 6 ? server(id, viewer, target, rows) : null;
+//$$         return rows == 3 || rows == 6 ? server(id, viewer, target, menuViewer, rows) : null;
 //$$     }
 //$$     public static DdsFakePlayerEnderChestMenu client(int id, Inventory viewer, int rows) {
 //$$         return new DdsFakePlayerEnderChestMenu(id, viewer, null, new SimpleContainer(rows * 9), new SimpleContainerData(1), rows);
 //$$     }
-//$$     private static DdsFakePlayerEnderChestMenu server(int id, Inventory viewer, EntityPlayerMPFake target, int rows) {
+//$$     private static DdsFakePlayerEnderChestMenu server(int id, Inventory viewer, EntityPlayerMPFake target, ServerPlayer menuViewer, int rows) {
+//$$         if (!DdsFakePlayerServerNetwork.sendOpenMenu(menuViewer, id, rows == 3 ? DdsFakePlayerPackets.MENU_ENDER_3 : DdsFakePlayerPackets.MENU_ENDER_6)) return null;
 //$$         Container ender = target.getEnderChestInventory();
 //$$         return new DdsFakePlayerEnderChestMenu(id, viewer, target, ender, new TargetStateData(target), rows);
 //$$     }
 //$$
 //$$     private DdsFakePlayerEnderChestMenu(int id, Inventory viewer, EntityPlayerMPFake target, Container canonical, ContainerData state, int rows) {
-//$$         super(DdsFakePlayerMenus.enderType(rows), id, viewer,
+//$$         super(rows == 3 ? MenuType.GENERIC_9x3 : MenuType.GENERIC_9x6, id, viewer,
 //$$                 new DdsMappedContainer(canonical, identity(rows * 9), target, target == null ? null : canonical), rows);
 //$$         this.target = target; this.canonical = target == null ? null : canonical; this.state = state; this.rows = rows;
 //$$         addDataSlots(state);
@@ -58,8 +62,8 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$     }
 //$$     @Override public ServerPlayer ddsInventoryOwner() { return target; }
 //$$     @Override public Container ddsCanonicalContainer() { return canonical; }
-//$$     @Override public AbstractContainerMenu ddsCreateEnderMenu(int id, Inventory viewerInventory) {
-//$$         return target == null ? null : create(id, viewerInventory, target);
+//$$     @Override public AbstractContainerMenu ddsCreateEnderMenu(int id, Inventory viewerInventory, ServerPlayer viewer) {
+//$$         return target == null ? null : create(id, viewerInventory, target, viewer);
 //$$     }
 //$$
 //$$     private static int[] identity(int size) { int[] result = new int[size]; for (int i = 0; i < size; i++) result[i] = i; return result; }

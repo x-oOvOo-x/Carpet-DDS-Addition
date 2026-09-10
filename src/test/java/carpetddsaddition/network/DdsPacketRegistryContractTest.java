@@ -31,7 +31,8 @@ final class DdsPacketRegistryContractTest {
                 DdsFakePlayerPackets.ACTION_C2S)), DdsPacketRegistry.localC2SPackets());
         assertEquals(new LinkedHashSet<>(Arrays.asList(
                 QuickContainerAccessPackets.CREATIVE_STORAGE_RESULT_S2C,
-                QuickContainerAccessPackets.NAVIGATION_STATE_S2C)), DdsPacketRegistry.localS2CPackets());
+                QuickContainerAccessPackets.NAVIGATION_STATE_S2C,
+                DdsFakePlayerPackets.OPEN_MENU_S2C)), DdsPacketRegistry.localS2CPackets());
     }
 
     @Test void qcaLegacyAndNavigationPacketsKeepDisabledGracePolicy() {
@@ -84,6 +85,6 @@ final class DdsPacketRegistryContractTest {
                 QuickContainerAccessPackets.STORAGE_CLICK_C2S, (player, data) -> {}, false, true));
         assertThrows(IllegalStateException.class, () -> DdsPacketRegistry.registerS2C(QuickContainerAccessPackets.CREATIVE_STORAGE_RESULT_S2C));
         assertEquals(8, DdsPacketRegistry.localC2SPackets().size());
-        assertEquals(2, DdsPacketRegistry.localS2CPackets().size());
+        assertEquals(3, DdsPacketRegistry.localS2CPackets().size());
     }
 }

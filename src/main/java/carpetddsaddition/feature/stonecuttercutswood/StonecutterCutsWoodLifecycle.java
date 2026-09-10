@@ -9,11 +9,9 @@ package carpetddsaddition.feature.stonecuttercutswood;
 import carpetddsaddition.core.lifecycle.DdsLifecycleComponent;
 import net.minecraft.server.MinecraftServer;
 
-/** Owns dynamically generated wood stonecutter recipe lifecycle. */
+/** Clears wood stonecutter runtime state when the server closes. */
 public final class StonecutterCutsWoodLifecycle implements DdsLifecycleComponent {
     public static final StonecutterCutsWoodLifecycle INSTANCE=new StonecutterCutsWoodLifecycle();
     private StonecutterCutsWoodLifecycle() {}
-    @Override public void onServerLoaded(MinecraftServer server) { StonecutterCutsWood.refresh(server,true); }
-    @Override public void onReload(MinecraftServer server) { StonecutterCutsWood.refresh(server,true); }
-    @Override public void onServerClosed(MinecraftServer server) { StonecutterCutsWood.reset(); }
+    @Override public void onServerClosed(MinecraftServer server){StonecutterCutsWood.reset();}
 }

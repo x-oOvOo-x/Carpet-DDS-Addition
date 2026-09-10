@@ -9,7 +9,8 @@
   "license": "LGPL-3.0-or-later",
   "environment": "*",
   "entrypoints": {
-    "main": ["carpetddsaddition.CarpetDDSAddition"]
+    "main": ["carpetddsaddition.CarpetDDSAddition"],
+    "client": ["carpetddsaddition.platform.fabric.DdsFabricClientInitializer"]
   },
   "mixins": ["carpet-dds-addition.mixins.json"],
   "depends": {

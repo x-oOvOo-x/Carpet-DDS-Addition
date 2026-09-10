@@ -10,6 +10,7 @@ import carpetddsaddition.CarpetDDSAddition;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 //#if MC >= 11404 && MC <= 260200
@@ -30,21 +31,37 @@ public final class DdsClientNetwork {
     private static final long HELLO_RETRY_NANOS = 1_000_000_000L;
     private static final DdsClientState STATE = new DdsClientState();
     private static final Map<String, Consumer<CompoundTag>> S2C_HANDLERS = new LinkedHashMap<>();
+    private static final Map<String, BiConsumer<ClientPacketListener, CompoundTag>> ORDERED_S2C_HANDLERS = new LinkedHashMap<>();
     private DdsClientNetwork() {}
 
     public static synchronized void registerS2CHandler(String packetId, Consumer<CompoundTag> handler) {
-        if (!DdsPacketRegistry.localS2CPackets().contains(packetId) || handler == null)
-            throw new IllegalArgumentException("Invalid DDS S2C client handler: " + packetId);
-        if (S2C_HANDLERS.putIfAbsent(packetId, handler) != null)
+        validateHandler(packetId, handler);
+        if (ORDERED_S2C_HANDLERS.containsKey(packetId) || S2C_HANDLERS.putIfAbsent(packetId, handler) != null)
             throw new IllegalStateException("Duplicate DDS S2C client handler: " + packetId);
     }
 
+    /** Registers a lightweight handler that must run in wire order before the next vanilla packet. */
+    public static synchronized void registerOrderedS2CHandler(String packetId, BiConsumer<ClientPacketListener, CompoundTag> handler) {
+        validateHandler(packetId, handler);
+        if (S2C_HANDLERS.containsKey(packetId) || ORDERED_S2C_HANDLERS.putIfAbsent(packetId, handler) != null)
+            throw new IllegalStateException("Duplicate DDS S2C client handler: " + packetId);
+    }
+
+    private static void validateHandler(String packetId, Object handler) {
+        if (!DdsPacketRegistry.localS2CPackets().contains(packetId) || handler == null)
+            throw new IllegalArgumentException("Invalid DDS S2C client handler: " + packetId);
+    }
+
     public static void onConnectedToServer() {
-        STATE.resetProtocolState();
         //#if MC >= 11404 && MC <= 260200
         ClientPacketListener listener = Minecraft.getInstance().getConnection();
-        STATE.bindConnection(listener);
+        synchronized (STATE) {
+            STATE.resetProtocolState();
+            STATE.bindConnection(listener);
+        }
         if (listener != null) sendHello();
+        //#else
+        //$$ STATE.resetProtocolState();
         //#endif
     }
 
@@ -74,19 +91,39 @@ public final class DdsClientNetwork {
     }
 
     //#if MC >= 11404 && MC <= 260200
-    public static void handlePayload(DdsProtocol.Payload payload) {
-        Minecraft.getInstance().execute(() -> {
-            if (DdsProtocol.HELLO_S2C.equals(payload.packetId())) {
-                handleHello(payload.data());
-                return;
-            }
-            Consumer<CompoundTag> handler;
-            synchronized (DdsClientNetwork.class) { handler = S2C_HANDLERS.get(payload.packetId()); }
-            if (handler != null && STATE.isServerProtocolActive()) handler.accept(payload.data());
-        });
+    public static void handlePayload(Object source, DdsProtocol.Payload payload) {
+        Minecraft minecraft = Minecraft.getInstance();
+        ClientPacketListener connection = minecraft.getConnection();
+        if (connection == null || source != connection || STATE.connection() != connection) return;
+
+        String packetId = payload.packetId();
+        if (DdsProtocol.HELLO_S2C.equals(packetId)) {
+            handleHello(connection, payload.data());
+            return;
+        }
+
+        BiConsumer<ClientPacketListener, CompoundTag> ordered;
+        Consumer<CompoundTag> handler;
+        synchronized (DdsClientNetwork.class) {
+            ordered = ORDERED_S2C_HANDLERS.get(packetId);
+            handler = S2C_HANDLERS.get(packetId);
+        }
+        if (!STATE.isServerProtocolActive()) return;
+        if (ordered != null) {
+            ordered.accept(connection, payload.data());
+            return;
+        }
+        if (handler == null) return;
+
+        Runnable dispatch = () -> {
+            if (minecraft.getConnection() == connection && STATE.connection() == connection && STATE.isServerProtocolActive())
+                handler.accept(payload.data());
+        };
+        if (minecraft.isSameThread()) dispatch.run();
+        else minecraft.execute(dispatch);
     }
 
-    private static void handleHello(CompoundTag data) {
+    private static void handleHello(ClientPacketListener connection, CompoundTag data) {
         //#if MC >= 12105
         //$$ int protocol = data.getIntOr("protocol", 0);
         //$$ boolean enabled = data.getIntOr("protocol_enabled", 0) != 0;
@@ -96,28 +133,32 @@ public final class DdsClientNetwork {
         boolean enabled = data.getInt("protocol_enabled") != 0;
         String supported = data.getString("supported_c2s");
         //#endif
-        if (protocol != DdsProtocol.VERSION || !enabled) {
-            STATE.updateHandshake(false, null);
-            return;
+        boolean active = protocol == DdsProtocol.VERSION && enabled;
+        Set<String> supportedC2S = active
+                ? DdsProtocol.decodeKnownIds(supported, DdsPacketRegistry.localC2SPackets()) : null;
+        synchronized (STATE) {
+            if (Minecraft.getInstance().getConnection() != connection || STATE.connection() != connection) return;
+            STATE.updateHandshake(active, supportedC2S);
         }
-        Set<String> supportedC2S = DdsProtocol.decodeKnownIds(supported, DdsPacketRegistry.localC2SPackets());
-        STATE.updateHandshake(true, supportedC2S);
     }
 
     private static boolean ensureCurrentConnection() {
-        ClientPacketListener current = Minecraft.getInstance().getConnection(), previous = STATE.connection();
-        if (current == null) {
-            if (previous != null || STATE.isServerProtocolActive() || STATE.lastHelloNanos() != 0L) {
-                STATE.bindConnection(null);
+        ClientPacketListener current = Minecraft.getInstance().getConnection();
+        synchronized (STATE) {
+            ClientPacketListener previous = STATE.connection();
+            if (current == null) {
+                if (previous != null || STATE.isServerProtocolActive() || STATE.lastHelloNanos() != 0L) {
+                    STATE.bindConnection(null);
+                    STATE.resetProtocolState();
+                }
+                return false;
+            }
+            if (previous != current) {
+                STATE.bindConnection(current);
                 STATE.resetProtocolState();
             }
-            return false;
+            return true;
         }
-        if (previous != current) {
-            STATE.bindConnection(current);
-            STATE.resetProtocolState();
-        }
-        return true;
     }
 
     private static void retryHelloIfNeeded() {

@@ -46,7 +46,8 @@ def multipart_body(metadata, jar_path):
 def find_jar(release_dir, mod_version, target):
     pattern = f"*-v{mod_version}-mc{target}.jar"
     matches = [p for p in release_dir.glob(pattern) if "-sources" not in p.name and "-dev" not in p.name]
-    if len(matches) != 1: raise RuntimeError(f"Expected one release jar for {target} ({pattern}), found: {', '.join(p.name for p in matches) or 'none'}")
+    if not matches: return None
+    if len(matches) != 1: raise RuntimeError(f"Expected at most one release jar for {target} ({pattern}), found: {', '.join(p.name for p in matches)}")
     return matches[0]
 
 
@@ -68,22 +69,16 @@ def duplicate_response(status, raw):
 
 def publish(project, token, mod_version, target, jar_path, changelog, tag_ids):
     metadata = {
-        "displayName": f"Carpet DDS Addition {mod_version} - Minecraft {target}",
-        "changelog": changelog,
-        "changelogType": "markdown",
-        "gameVersions": tag_ids,
-        "releaseType": "release",
-        "isMarkedForManualRelease": False,
+        "displayName": f"Carpet DDS Addition {mod_version} - Minecraft {target}", "changelog": changelog,
+        "changelogType": "markdown", "gameVersions": tag_ids, "releaseType": "release", "isMarkedForManualRelease": False,
         "relations": {"projects": [{"slug": "carpet", "projectID": CARPET_PROJECT_ID, "type": "requiredDependency"}]},
     }
     body, content_type = multipart_body(metadata, jar_path)
     status, data, raw = request_json(f"{API_BASE}/api/projects/{project}/upload-file", token, "POST", body, {"Content-Type": content_type})
     if 200 <= status < 300:
-        print(f"[published] {target}: {jar_path.name} -> {data.get('id', 'unknown') if isinstance(data, dict) else 'unknown'}")
-        return
+        print(f"[published] {target}: {jar_path.name} -> {data.get('id', 'unknown') if isinstance(data, dict) else 'unknown'}"); return
     if duplicate_response(status, raw):
-        print(f"[skip] {target}: CurseForge reports an existing/duplicate file")
-        return
+        print(f"[skip] {target}: CurseForge reports an existing/duplicate file"); return
     raise RuntimeError(f"Failed to publish {target}: HTTP {status}: {raw}")
 
 
@@ -102,10 +97,15 @@ def main():
     config = json.loads(args.config.read_text(encoding="utf-8"))
     changelog = args.changelog_file.read_text(encoding="utf-8").strip() if args.changelog_file and args.changelog_file.exists() else ""
     if not changelog: changelog = f"Carpet DDS Addition {args.version}"
-    all_names = list(dict.fromkeys([name for versions in config.values() for name in versions] + ["Fabric", "Server"]))
-    ids = dict(zip(all_names, game_version_ids(token, all_names)))
+    targets = []
     for target, versions in config.items():
         jar = find_jar(args.release_dir, args.version, target)
+        if jar is None:
+            print(f"[skip] {target}: no active release jar"); continue
+        targets.append((target, versions, jar))
+    all_names = list(dict.fromkeys([name for _, versions, _ in targets for name in versions] + ["Fabric", "Server"]))
+    ids = dict(zip(all_names, game_version_ids(token, all_names)))
+    for target, versions, jar in targets:
         names = list(dict.fromkeys(list(versions) + ["Fabric", "Server"]))
         print(f"[prepare] {target}: {jar.name} -> {', '.join(names)}")
         publish(args.project, token, args.version, target, jar, changelog, [ids[name] for name in names])
@@ -114,5 +114,4 @@ def main():
 if __name__ == "__main__":
     try: main()
     except Exception as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        sys.exit(1)
+        print(f"ERROR: {exc}", file=sys.stderr); sys.exit(1)

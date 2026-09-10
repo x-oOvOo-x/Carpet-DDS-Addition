@@ -23,7 +23,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 //$$ @Mixin(PlayerList.class)
 //$$ public abstract class PlayerListMixin {
 //$$     @Inject(method = "remove", at = @At("HEAD"))
-//$$     private void carpetDDSAddition$restoreCameraBeforeDisconnect(ServerPlayer player, CallbackInfo ci) {
+//$$     private void carpetDDSAddition$retainCameraOnDisconnect(ServerPlayer player, CallbackInfo ci) {
 //$$         CommandCameraCompat.onPlayerDisconnect(player);
 //$$     }
 //$$ }

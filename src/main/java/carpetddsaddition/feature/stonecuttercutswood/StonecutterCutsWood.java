@@ -9,10 +9,12 @@ package carpetddsaddition.feature.stonecuttercutswood;
 import carpetddsaddition.core.rules.DdsRuleEvents;
 import carpetddsaddition.feature.stonecuttercutswood.compat.StonecutterCutsWoodCompat;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.item.crafting.RecipeManager;
 
 public final class StonecutterCutsWood {
     private StonecutterCutsWood() {}
     public static DdsRuleEvents.Observer ruleObserver(){return StonecutterCutsWoodCompat.ruleObserver();}
+    public static void onRecipeManagerApplied(RecipeManager manager){StonecutterCutsWoodCompat.onRecipeManagerApplied(manager);}
     public static void refresh(MinecraftServer server,boolean force){StonecutterCutsWoodCompat.refresh(server,force);}
     public static void reset(){StonecutterCutsWoodCompat.reset();}
 }

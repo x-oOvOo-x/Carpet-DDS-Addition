@@ -8,9 +8,12 @@ package carpetddsaddition.feature.stonecuttercutsdeepslate;
 
 import carpetddsaddition.feature.stonecuttercutsdeepslate.compat.StonecutterCutsDeepslateCompat;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.item.crafting.RecipeManager;
 
 public final class StonecutterCutsDeepslate {
     private StonecutterCutsDeepslate() {}
-    public static void refresh(MinecraftServer server, boolean force) { StonecutterCutsDeepslateCompat.refresh(server, force); }
-    public static void reset() { StonecutterCutsDeepslateCompat.reset(); }
+    public static void onRecipeManagerApplied(RecipeManager manager){StonecutterCutsDeepslateCompat.onRecipeManagerApplied(manager);}
+    public static void refreshLegacyLifecycle(MinecraftServer server){StonecutterCutsDeepslateCompat.refreshLegacyLifecycle(server);}
+    public static void refresh(MinecraftServer server,boolean force){StonecutterCutsDeepslateCompat.refresh(server,force);}
+    public static void reset(){StonecutterCutsDeepslateCompat.reset();}
 }

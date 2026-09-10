@@ -10,61 +10,55 @@ import carpetddsaddition.generated.DDSRules;
 import java.util.Locale;
 
 public final class NaturalPassiveSpawning {
+    public enum Group {
+        LAND(1 << 0), FISH(1 << 1), SQUID(1 << 2), AXOLOTL(1 << 3), BAT(1 << 4), DOLPHIN(1 << 5);
+        private final int bit;
+        Group(int bit) { this.bit = bit; }
+    }
+
+    private static final int ALL_MASK = Group.LAND.bit | Group.FISH.bit | Group.SQUID.bit | Group.AXOLOTL.bit | Group.BAT.bit | Group.DOLPHIN.bit;
     private static volatile String cachedRaw;
-    private static volatile Config cachedConfig = Config.ALL;
+    private static volatile int cachedMask;
     private NaturalPassiveSpawning() {}
 
-    public static boolean land() { return config().land; }
-    public static boolean fish() { return config().fish; }
-    public static boolean squid() { return config().squid; }
-    public static boolean axolotl() { return config().axolotl; }
-    public static boolean bat() { return config().bat; }
-    public static boolean dolphin() { return config().dolphin; }
+    public static boolean prevents(Group group) { return group != null && (mask() & group.bit) != 0; }
 
-    private static Config config() {
+    private static int mask() {
         String raw = DDSRules.naturalPassiveSpawning();
-        if (raw == null) raw = "all";
-        if (!raw.equals(cachedRaw)) synchronized (NaturalPassiveSpawning.class) {
-            if (!raw.equals(cachedRaw)) {
-                cachedConfig = parse(raw);
+        if (raw == null) raw = "none";
+        String current = cachedRaw;
+        if (raw != current && !raw.equals(current)) synchronized (NaturalPassiveSpawning.class) {
+            current = cachedRaw;
+            if (raw != current && !raw.equals(current)) {
+                cachedMask = parse(raw);
                 cachedRaw = raw;
             }
         }
-        return cachedConfig;
+        return cachedMask;
     }
 
-    private static Config parse(String raw) {
+    static int parse(String raw) {
+        if (raw == null) return 0;
         String normalized = raw.trim().toLowerCase(Locale.ROOT);
-        if ("all".equals(normalized)) return Config.ALL;
-        if ("none".equals(normalized)) return Config.NONE;
-        boolean land = false, fish = false, squid = false, axolotl = false, bat = false, dolphin = false;
-        for (String rawToken : normalized.split(",")) {
+        if (normalized.isEmpty() || "none".equals(normalized)) return 0;
+        if ("all".equals(normalized)) return ALL_MASK;
+        int mask = 0;
+        for (String rawToken : normalized.split(",", -1)) {
             String token = rawToken.trim();
-            if (token.isEmpty()) return Config.ALL;
+            if (token.isEmpty()) return 0;
             switch (token) {
-                case "land": land = true; break;
-                case "fish": fish = true; break;
-                case "squid": squid = true; break;
-                case "axolotl": axolotl = true; break;
-                case "bat": bat = true; break;
-                case "dolphin": dolphin = true; break;
-                default: return Config.ALL; // Invalid input fails safe to vanilla behavior.
+                case "land": mask |= Group.LAND.bit; break;
+                case "fish": mask |= Group.FISH.bit; break;
+                case "squid": mask |= Group.SQUID.bit; break;
+                case "axolotl": mask |= Group.AXOLOTL.bit; break;
+                case "bat": mask |= Group.BAT.bit; break;
+                case "dolphin": mask |= Group.DOLPHIN.bit; break;
+                default: return 0; // Invalid input fails safe to vanilla spawning.
             }
         }
-        return new Config(land, fish, squid, axolotl, bat, dolphin);
+        return mask;
     }
 
-    private static final class Config {
-        private static final Config ALL = new Config(true, true, true, true, true, true);
-        private static final Config NONE = new Config(false, false, false, false, false, false);
-        private final boolean land, fish, squid, axolotl, bat, dolphin;
-        private Config(boolean land, boolean fish, boolean squid, boolean axolotl, boolean bat, boolean dolphin) {
-            this.land = land;
-            this.fish = fish;
-            this.squid = squid;
-            this.axolotl = axolotl;
-            this.bat = bat;
-            this.dolphin = dolphin;
-        }
-    }
+    static boolean prevents(int mask, Group group) { return group != null && (mask & group.bit) != 0; }
+    static int allMask() { return ALL_MASK; }
 }

@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer.client.ipn;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerMenu;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.client.DdsFakePlayerScreen;
 //$$ import net.minecraft.client.Minecraft;

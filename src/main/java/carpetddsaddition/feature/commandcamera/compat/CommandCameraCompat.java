@@ -10,6 +10,8 @@ package carpetddsaddition.feature.commandcamera.compat;
 //$$ import carpetddsaddition.generated.DDSRules;
 //$$ import carpetddsaddition.feature.commandcamera.CameraState;
 //$$ import carpetddsaddition.feature.commandcamera.CommandCamera;
+//$$ import carpetddsaddition.mixin.feature.commandcamera.LivingEntityCameraAccessor;
+//$$ import carpetddsaddition.mixin.feature.commandcamera.PlayerListCameraAccessor;
 //$$ import net.minecraft.ChatFormatting;
 //$$ import net.minecraft.network.chat.Component;
 //$$ import net.minecraft.server.level.ServerLevel;
@@ -37,16 +39,23 @@ public final class CommandCameraCompat {
 
     //#if MC >= 11601 && MC <= 260200
     //$$ public static boolean isEnabled() { return DDSRules.commandCamera(); }
-    //$$ public static boolean isCamera(ServerPlayer player) { return CommandCamera.isCamera(player.getUUID()); }
+    //$$ public static boolean isCamera(ServerPlayer player) {
+    //$$     CommandCameraPersistenceCompat.loadIfNeeded(player);
+    //$$     return CommandCamera.isCamera(player.getUUID());
+    //$$ }
     //$$
-    //$$ /** Cancels vanilla out-of-world damage; failed restore preserves the session for retry. */
+    //$$ /** Camera sessions always consume void damage; auto-back never mutates the immutable origin snapshot. */
     //$$ public static boolean handleVoidDamage(ServerPlayer player, DamageSource source) {
     //$$     if (!isCamera(player) || !isVoidDamage(source)) return false;
-    //$$     if (back(player) != 0) actionBar(player, "已自动返回 Camera 原点 | Returned to camera origin");
+    //$$     ensureCameraState(player);
+    //$$     boolean returned = returnToCameraOrigin(player, false);
+    //$$     if (CommandCamera.shouldNotifyVoid(player.getUUID()))
+    //$$         actionBar(player, returned ? "已自动返回 Camera 回位点 | Returned to camera safety point"
+    //$$                 : "Camera 自动回位失败，会话已保留 | Camera return failed; session preserved");
     //$$     return true;
     //$$ }
     //$$ public static int toggle(ServerPlayer player) {
-    //$$     if (isCamera(player)) return restore(player, true, true) ? 1 : 0;
+    //$$     if (isCamera(player)) return exitCamera(player, true) ? 1 : 0;
     //$$     if (!isEnabled()) {
     //$$         actionBar(player, "commandCamera 规则未开启");
     //$$         return 0;
@@ -62,8 +71,7 @@ public final class CommandCameraCompat {
     //$$         actionBar(player, "Camera 状态异常，请使用 /c 恢复");
     //$$         return 0;
     //$$     }
-    //$$     stopFollowing(player, false);
-    //$$     return restore(player, false, true) ? 1 : 0;
+    //$$     return returnToCameraOrigin(player, true) ? 1 : 0;
     //$$ }
     //$$ public static int follow(ServerPlayer player, ServerPlayer target) {
     //$$     if (target == player) {
@@ -74,14 +82,12 @@ public final class CommandCameraCompat {
     //$$         actionBar(player, "目标玩家当前不可跟随");
     //$$         return 0;
     //$$     }
-    //$$     boolean enteredNow = false;
     //$$     if (!isCamera(player)) {
     //$$         if (!isEnabled()) {
     //$$             actionBar(player, "commandCamera 规则未开启");
     //$$             return 0;
     //$$         }
     //$$         if (!enter(player, true)) return 0;
-    //$$         enteredNow = true;
     //$$     } else {
     //$$         if (!isEnabled()) {
     //$$             actionBar(player, "commandCamera 已关闭，只能返回或退出");
@@ -92,9 +98,7 @@ public final class CommandCameraCompat {
     //$$             return 0;
     //$$         }
     //$$     }
-    //$$     if (beginFollow(player, target)) return 1;
-    //$$     if (enteredNow) restore(player, true, false);
-    //$$     return 0;
+    //$$     return beginFollow(player, target) ? 1 : 0;
     //$$ }
     //$$
     //$$ private static boolean enter(ServerPlayer player, boolean feedback) {
@@ -102,22 +106,24 @@ public final class CommandCameraCompat {
     //$$     UUID playerId = player.getUUID();
     //$$     CameraState state = capture(player);
     //$$     if (!CommandCamera.beginSession(playerId, state)) {
-    //$$         actionBar(player, "Camera 会话已存在");
+    //$$         actionBar(player, "Camera 会话已存在或无法持久化");
     //$$         return false;
     //$$     }
     //$$     if (!setGameModeCompat(player, GameType.SPECTATOR)) {
-    //$$         CommandCamera.removeSession(playerId, state);
-    //$$         actionBar(player, "无法进入 Camera 模式");
+    //$$         actionBar(player, "Camera 会话已保存，将自动重试进入旁观模式");
     //$$         return false;
     //$$     }
     //$$     player.setCamera(player);
+    //$$     player.setDeltaMovement(new Vec3(0.0D, 0.0D, 0.0D));
     //$$     if (feedback) cameraModeActionBar(player, true);
     //$$     return true;
     //$$ }
     //$$ private static CameraState capture(ServerPlayer player) {
     //$$     Vec3 motion = player.getDeltaMovement();
-    //$$     return new CameraState(dimensionId(levelOf(player)), player.getX(), player.getY(), player.getZ(),
-    //$$             yawOf(player), pitchOf(player), motion.x, motion.y, motion.z);
+    //$$     return new CameraState("survival", dimensionId(levelOf(player)), player.getX(), player.getY(), player.getZ(),
+    //$$             yawOf(player), pitchOf(player), motion.x, motion.y, motion.z, (float) Math.max(0.0D, player.fallDistance),
+    //$$             player.isFallFlying(), player.getAirSupply(), Math.max(0, player.getRemainingFireTicks()),
+    //$$             frozenTicks(player), fallFlyingTicks(player));
     //$$ }
     //$$ private static boolean canEnter(ServerPlayer player) {
     //$$     if (!player.isAlive()) {
@@ -128,17 +134,23 @@ public final class CommandCameraCompat {
     //$$         actionBar(player, "只有生存模式玩家可以进入 Camera");
     //$$         return false;
     //$$     }
-    //$$     if (!isOnGround(player)) {
-    //$$         actionBar(player, "必须站稳在地面上才能进入 Camera");
+    //$$     if (player.isPassenger()) {
+    //$$         actionBar(player, "骑乘状态下无法进入 Camera");
     //$$         return false;
     //$$     }
-    //$$     if (player.getAirSupply() != player.getMaxAirSupply()) {
-    //$$         actionBar(player, "必须处于正常空气环境才能进入 Camera");
-    //$$         return false;
-    //$$     }
-    //$$     if (player.isOnFire()) {
-    //$$         actionBar(player, "着火时无法进入 Camera");
-    //$$         return false;
+    //$$     if (!DDSRules.noCameraSurvivalRestrictions()) {
+    //$$         if (!isOnGround(player)) {
+    //$$             actionBar(player, "必须站稳在地面上才能进入 Camera");
+    //$$             return false;
+    //$$         }
+    //$$         if (player.getAirSupply() != player.getMaxAirSupply()) {
+    //$$             actionBar(player, "必须处于正常空气环境才能进入 Camera");
+    //$$             return false;
+    //$$         }
+    //$$         if (player.isOnFire()) {
+    //$$             actionBar(player, "着火时无法进入 Camera");
+    //$$             return false;
+    //$$         }
     //$$     }
     //$$     return true;
     //$$ }
@@ -147,13 +159,22 @@ public final class CommandCameraCompat {
     //$$     stopFollowing(player, false);
     //$$     player.setCamera(player);
     //$$     if (!teleportPlayer(player, levelOf(target), target.getX(), target.getY(), target.getZ(), yawOf(target), pitchOf(target))) {
-    //$$         actionBar(player, "无法移动到目标玩家，跟随已取消");
+    //$$         actionBar(player, "无法移动到目标玩家，Camera 会话已保留");
     //$$         return false;
     //$$     }
     //$$     CommandCamera.beginFollow(player.getUUID(), target.getUUID(), FOLLOW_ATTACH_DELAY_TICKS);
     //$$     return true;
     //$$ }
+    //$$ public static void ensureCameraState(ServerPlayer player) {
+    //$$     if (!isCamera(player) || !player.isAlive()) return;
+    //$$     if (gameModeOf(player) != GameType.SPECTATOR) {
+    //$$         CommandCamera.clearFollow(player.getUUID());
+    //$$         if (!setGameModeCompat(player, GameType.SPECTATOR)) return;
+    //$$         player.setCamera(player);
+    //$$     }
+    //$$ }
     //$$ public static void tick(ServerPlayer player) {
+    //$$     ensureCameraState(player);
     //$$     if (!CommandCamera.hasFollowTargets()) return;
     //$$     UUID playerId = player.getUUID(), targetId = CommandCamera.followTarget(playerId);
     //$$     if (targetId == null) return;
@@ -203,44 +224,101 @@ public final class CommandCameraCompat {
     //$$     if (targetUnavailableFeedback) actionBar(player, "目标玩家已不可用，已停止跟随");
     //$$ }
     //$$
-    //$$ private static boolean restore(ServerPlayer player, boolean exitToSurvival, boolean feedback) {
+    //$$ /** Camera-only return path: never restores the Survival snapshot and never rewrites/deletes it. */
+    //$$ private static boolean returnToCameraOrigin(ServerPlayer player, boolean feedback) {
+    //$$     CameraState state = CommandCamera.state(player.getUUID());
+    //$$     if (state == null) return false;
+    //$$     stopFollowing(player, false);
+    //$$     player.setCamera(player);
+    //$$     ServerLevel destination = findLevel(player, state.dimensionId());
+    //$$     if (destination == null) {
+    //$$         if (feedback) actionBar(player, "Camera 原始维度不存在，已停止跟随并保留会话");
+    //$$         return false;
+    //$$     }
+    //$$     if (gameModeOf(player) != GameType.SPECTATOR && !setGameModeCompat(player, GameType.SPECTATOR)) {
+    //$$         if (feedback) actionBar(player, "无法恢复旁观模式，Camera 会话已保留");
+    //$$         return false;
+    //$$     }
+    //$$     double y = CommandCamera.cameraReturnY(state.y(), minBuildHeight(destination));
+    //$$     if (!teleportPlayer(player, destination, state.x(), y, state.z(), state.yaw(), state.pitch())
+    //$$             || !isAt(player, destination, state.x(), y, state.z())) {
+    //$$         if (feedback) actionBar(player, "无法返回 Camera 回位点，已保持当前状态");
+    //$$         return false;
+    //$$     }
+    //$$     player.setDeltaMovement(new Vec3(0.0D, 0.0D, 0.0D));
+    //$$     if (feedback) actionBar(player, y == state.y() ? "已返回 Camera 原点" : "原点低于安全下限，已返回 Camera 安全高度");
+    //$$     return true;
+    //$$ }
+    //$$
+    //$$ /** Explicit final exit: playerdata is committed before the DDS session is removed. */
+    //$$ private static boolean exitCamera(ServerPlayer player, boolean feedback) {
     //$$     UUID playerId = player.getUUID();
     //$$     CameraState state = CommandCamera.state(playerId);
     //$$     if (state == null) return false;
     //$$     ServerLevel destination = findLevel(player, state.dimensionId());
-    //$$     if (destination == null) {
-    //$$         if (feedback) actionBar(player, "Camera 原始维度不存在，已保持当前状态");
-    //$$         return false;
-    //$$     }
+    //$$     if (destination == null) return failExit(player, feedback, "Camera 原始维度不存在，Session 已保留");
     //$$     stopFollowing(player, false);
     //$$     player.setCamera(player);
     //$$     if (!teleportPlayer(player, destination, state.x(), state.y(), state.z(), state.yaw(), state.pitch())
-    //$$             || !isAt(player, destination, state.x(), state.y(), state.z())) {
-    //$$         if (feedback) actionBar(player, "无法返回 Camera 原点，已保持当前状态");
-    //$$         return false;
-    //$$     }
-    //$$     player.setDeltaMovement(new Vec3(state.motionX(), state.motionY(), state.motionZ()));
-    //$$     if (!exitToSurvival) {
-    //$$         if (gameModeOf(player) != GameType.SPECTATOR) {
-    //$$             if (feedback) actionBar(player, "Camera 状态异常，请使用 /c 恢复");
-    //$$             return false;
-    //$$         }
-    //$$         return true;
-    //$$     }
-    //$$     if (gameModeOf(player) != GameType.SURVIVAL && !setGameModeCompat(player, GameType.SURVIVAL)) {
-    //$$         if (feedback) actionBar(player, "已返回原点，但无法恢复生存模式");
-    //$$         return false;
-    //$$     }
-    //$$     if (!CommandCamera.removeSession(playerId, state)) return false;
+    //$$             || !isAt(player, destination, state.x(), state.y(), state.z()))
+    //$$         return failExit(player, feedback, "无法返回 Camera 原始坐标，Session 已保留");
+    //$$     GameType originalGameMode = originalGameMode(state);
+    //$$     if (gameModeOf(player) != originalGameMode && !setGameModeCompat(player, originalGameMode))
+    //$$         return failExit(player, feedback, "无法恢复原游戏模式，Session 已保留");
+    //$$     if (!restoreSurvivalState(player, state))
+    //$$         return failExit(player, feedback, "无法完整恢复进入 Camera 前的生存状态，Session 已保留");
+    //$$     if (gameModeOf(player) != originalGameMode || player.isFallFlying() != state.fallFlying())
+    //$$         return failExit(player, feedback, "Camera 状态校验失败，Session 已保留");
+    //$$     if (!savePlayerData(player)) return failExit(player, feedback, "玩家数据保存失败，Session 已保留");
+    //$$     if (!CommandCamera.removeSession(playerId, state))
+    //$$         return failExit(player, feedback, "Camera Session 提交失败，已保留以便重试");
     //$$     if (feedback) cameraModeActionBar(player, false);
     //$$     return true;
+    //$$ }
+    //$$ private static boolean restoreSurvivalState(ServerPlayer player, CameraState state) {
+    //$$     player.setDeltaMovement(new Vec3(state.motionX(), state.motionY(), state.motionZ()));
+    //$$     int maxAir = player.getMaxAirSupply(), savedAir = state.airSupply();
+    //$$     player.setAirSupply(savedAir == CameraState.MAX_AIR_SENTINEL ? maxAir : Math.min(savedAir, maxAir));
+    //$$     player.setRemainingFireTicks(state.remainingFireTicks());
+    //$$     setFrozenTicks(player, state.frozenTicks());
+    //$$     player.stopFallFlying();
+    //$$     if (state.fallFlying() && !player.tryToStartFallFlying()) return false;
+    //$$     setFallFlyingTicks(player, state.fallFlyingTicks());
+    //$$     player.fallDistance = state.fallDistance();
+    //$$     return player.isFallFlying() == state.fallFlying();
+    //$$ }
+    //$$ private static boolean failExit(ServerPlayer player, boolean feedback, String message) {
+    //$$     CommandCamera.clearFollow(player.getUUID());
+    //$$     player.setCamera(player);
+    //$$     if (gameModeOf(player) != GameType.SPECTATOR) setGameModeCompat(player, GameType.SPECTATOR);
+    //$$     player.setDeltaMovement(new Vec3(0.0D, 0.0D, 0.0D));
+    //$$     savePlayerData(player);
+    //$$     if (feedback) actionBar(player, message);
+    //$$     return false;
+    //$$ }
+    //$$ private static boolean savePlayerData(ServerPlayer player) {
+    //$$     try {
+    //$$         ((PlayerListCameraAccessor) levelOf(player).getServer().getPlayerList()).carpetDDSAddition$savePlayer(player);
+    //$$         return true;
+    //$$     } catch (RuntimeException exception) {
+    //$$         System.err.println("[Carpet DDS Addition] Failed to save Camera playerdata: " + exception.getMessage());
+    //$$         return false;
+    //$$     }
     //$$ }
     //$$ static ServerLevel findLevel(ServerPlayer player, String targetDimensionId) {
     //$$     for (ServerLevel level : levelOf(player).getServer().getAllLevels())
     //$$         if (dimensionId(level).equals(targetDimensionId)) return level;
     //$$     return null;
     //$$ }
-    //$$ public static void onPlayerDisconnect(ServerPlayer player) { if (isCamera(player)) restore(player, true, false); }
+    //$$ private static GameType originalGameMode(CameraState state) {
+    //$$     switch (state.gameModeId()) {
+    //$$         case "creative": return GameType.CREATIVE;
+    //$$         case "adventure": return GameType.ADVENTURE;
+    //$$         case "spectator": return GameType.SPECTATOR;
+    //$$         default: return GameType.SURVIVAL;
+    //$$     }
+    //$$ }
+    //$$ public static void onPlayerDisconnect(ServerPlayer player) { CommandCamera.clearRuntime(player.getUUID()); }
     //$$ private static boolean isVoidDamage(DamageSource source) {
     //#if MC <= 11903
     //$$     return source == DamageSource.OUT_OF_WORLD;
@@ -291,6 +369,33 @@ public final class CommandCameraCompat {
     //$$     return player.isOnGround();
     //#else
     //$$     return player.onGround();
+    //#endif
+    //$$ }
+    //$$ private static int frozenTicks(ServerPlayer player) {
+    //#if MC <= 11605
+    //$$     return 0;
+    //#else
+    //$$     return Math.max(0, player.getTicksFrozen());
+    //#endif
+    //$$ }
+    //$$ private static void setFrozenTicks(ServerPlayer player, int ticks) {
+    //#if MC <= 11605
+    //$$     // Powder snow freezing does not exist yet.
+    //#else
+    //$$     player.setTicksFrozen(ticks);
+    //#endif
+    //$$ }
+    //$$ private static int fallFlyingTicks(ServerPlayer player) {
+    //$$     return Math.max(0, ((LivingEntityCameraAccessor) player).carpetDDSAddition$getFallFlyingTicks());
+    //$$ }
+    //$$ private static void setFallFlyingTicks(ServerPlayer player, int ticks) {
+    //$$     ((LivingEntityCameraAccessor) player).carpetDDSAddition$setFallFlyingTicks(ticks);
+    //$$ }
+    //$$ private static int minBuildHeight(ServerLevel level) {
+    //#if MC <= 11605
+    //$$     return 0;
+    //#else
+    //$$     return level.getMinBuildHeight();
     //#endif
     //$$ }
     //$$ static String dimensionId(ServerLevel level) {

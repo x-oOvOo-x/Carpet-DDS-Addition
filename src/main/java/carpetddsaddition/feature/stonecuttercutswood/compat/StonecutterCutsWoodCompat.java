@@ -43,8 +43,7 @@ import java.util.Set;
 //#endif
 
 public final class StonecutterCutsWoodCompat {
-    private static Boolean appliedState;
-    private static Object appliedRecipeManager;
+    private static Boolean appliedState; private static Object appliedRecipeManager;
     private static final Set<Object> GENERATED_ENTRIES=Collections.newSetFromMap(new IdentityHashMap<Object,Boolean>());
     private StonecutterCutsWoodCompat(){}
 
@@ -55,20 +54,24 @@ public final class StonecutterCutsWoodCompat {
         return DdsRuleEvents.observe(()->false,server->{});
         //#endif
     }
+    public static void onRecipeManagerApplied(Object value){
+        //#if MC >= 12103
+        //$$ RecipeManager manager=(RecipeManager)value; boolean enabled=DDSRules.stonecutterCutsWood(); StonecutterRecipeRuntimeCompat.replaceLoadedRecipes(manager,buildRecipes(manager,enabled)); remember(manager,enabled);
+        //#endif
+    }
     public static void refresh(MinecraftServer server,boolean force){
         //#if MC >= 12103
-        //$$ if(server==null)return;
-        //$$ boolean enabled=DDSRules.stonecutterCutsWood(); RecipeManager manager=server.getRecipeManager();
+        //$$ if(server==null)return; boolean enabled=DDSRules.stonecutterCutsWood(); RecipeManager manager=server.getRecipeManager();
         //$$ if(!force&&appliedRecipeManager==manager&&appliedState!=null&&appliedState.booleanValue()==enabled)return;
-        //$$ rebuild(server,manager,enabled); appliedRecipeManager=manager; appliedState=Boolean.valueOf(enabled);
+        //$$ StonecutterRecipeRuntimeCompat.replace(server,manager,buildRecipes(manager,enabled)); remember(manager,enabled);
         //#endif
     }
     public static void reset(){appliedState=null; appliedRecipeManager=null; GENERATED_ENTRIES.clear();}
 
     //#if MC >= 12103
-    //$$ private static void rebuild(MinecraftServer server,RecipeManager manager,boolean enabled){
-    //$$     List<RecipeHolder<?>> recipes=new ArrayList<RecipeHolder<?>>(manager.getRecipes()); recipes.removeIf(GENERATED_ENTRIES::contains); GENERATED_ENTRIES.clear();
-    //$$     if(enabled)addGeneratedRecipes(recipes); StonecutterRecipeRuntimeCompat.replace(server,manager,recipes);
+    //$$ private static void remember(RecipeManager manager,boolean enabled){appliedRecipeManager=manager; appliedState=Boolean.valueOf(enabled);}
+    //$$ private static List<RecipeHolder<?>> buildRecipes(RecipeManager manager,boolean enabled){
+    //$$     List<RecipeHolder<?>> recipes=new ArrayList<RecipeHolder<?>>(manager.getRecipes()); recipes.removeIf(GENERATED_ENTRIES::contains); GENERATED_ENTRIES.clear(); if(enabled)addGeneratedRecipes(recipes); return recipes;
     //$$ }
     //$$ private static void addGeneratedRecipes(List<RecipeHolder<?>> recipes){
     //$$     Set<ResourceKey<Recipe<?>>> usedIds=new HashSet<ResourceKey<Recipe<?>>>(); for(RecipeHolder<?> holder:recipes)usedIds.add(holder.id());

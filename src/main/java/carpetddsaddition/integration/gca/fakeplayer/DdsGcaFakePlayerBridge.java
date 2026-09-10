@@ -6,9 +6,8 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer;
 
-//#if MC >= 11902 && MC <= 260200
-//$$ import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerPackets;
-//$$ import carpetddsaddition.network.DdsServerNetwork;
+//#if MC >= 11904 && MC <= 260200
+//$$ import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerServerNetwork;
 //$$ import net.fabricmc.loader.api.FabricLoader;
 //$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.world.item.Items;
@@ -28,7 +27,7 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$         return clientSupportsEnhancedMenu(viewer) && shouldOpenGcaEnderChest(viewer);
 //$$     }
 //$$     private static boolean clientSupportsEnhancedMenu(ServerPlayer viewer) {
-//$$         return SAFE_DIRECT_INVENTORY && DdsServerNetwork.doesClientSupport(viewer, DdsFakePlayerPackets.ACTION_C2S);
+//$$         return SAFE_DIRECT_INVENTORY && DdsFakePlayerServerNetwork.supportsEnhancedMenu(viewer);
 //$$     }
 //$$
 //$$     /** Mirrors GCA's openFakePlayerEnderChest rule semantics at interaction time. */

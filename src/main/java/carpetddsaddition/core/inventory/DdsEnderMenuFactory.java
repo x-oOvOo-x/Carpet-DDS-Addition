@@ -6,10 +6,11 @@
  */
 package carpetddsaddition.core.inventory;
 
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 
 /** Optional menu context used to preserve specialized Ender Chest UIs through nested QCA opens. */
 public interface DdsEnderMenuFactory {
-    AbstractContainerMenu ddsCreateEnderMenu(int containerId, Inventory viewerInventory);
+    AbstractContainerMenu ddsCreateEnderMenu(int containerId, Inventory viewerInventory, ServerPlayer viewer);
 }

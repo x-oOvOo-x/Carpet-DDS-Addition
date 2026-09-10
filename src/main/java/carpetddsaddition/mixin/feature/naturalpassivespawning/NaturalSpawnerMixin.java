@@ -20,6 +20,7 @@
 package carpetddsaddition.mixin.feature.naturalpassivespawning;
 
 import carpetddsaddition.feature.naturalpassivespawning.NaturalPassiveSpawning;
+import carpetddsaddition.feature.naturalpassivespawning.NaturalPassiveSpawning.Group;
 import carpetddsaddition.feature.naturalpassivespawning.compat.NaturalPassiveSpawningCompat;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -59,7 +60,7 @@ public abstract class NaturalSpawnerMixin {
 
     @Inject(method = "spawnMobsForChunkGeneration", at = @At("HEAD"), cancellable = true)
     private static void carpetDDSAddition$skipChunkGenerationCreatures(CallbackInfo ci) {
-        if (!NaturalPassiveSpawning.land()) ci.cancel();
+        if (NaturalPassiveSpawning.prevents(Group.LAND)) ci.cancel();
     }
 
     //#if MC >= 11601

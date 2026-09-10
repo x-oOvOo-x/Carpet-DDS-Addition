@@ -44,10 +44,10 @@ public abstract class ClientCustomPayloadMixin {
     private void dds$handleCustomPayload(ClientboundCustomPayloadPacket packet, CallbackInfo ci) {
         //#if MC >= 12002
         //$$ if (!(packet.payload() instanceof DdsProtocol.Payload)) return;
-        //$$ DdsClientNetwork.handlePayload((DdsProtocol.Payload) packet.payload());
+        //$$ DdsClientNetwork.handlePayload(this, (DdsProtocol.Payload) packet.payload());
         //#else
         if (!DdsProtocol.CHANNEL.equals(packet.getIdentifier())) return;
-        DdsClientNetwork.handlePayload(new DdsProtocol.Payload(packet.getData()));
+        DdsClientNetwork.handlePayload(this, new DdsProtocol.Payload(packet.getData()));
         //#endif
         ci.cancel();
     }

@@ -29,14 +29,14 @@ import java.util.Set;
 //$$ import net.minecraft.world.item.crafting.RecipeHolder;
 //#endif
 //#if MC >= 12103
+//$$ import carpetddsaddition.platform.minecraft.recipe.RecipeManagerBridge;
+//$$ import net.minecraft.core.HolderLookup;
 //$$ import net.minecraft.core.registries.Registries;
 //$$ import net.minecraft.resources.ResourceKey;
 //$$ import net.minecraft.world.item.crafting.SingleRecipeInput;
 //#endif
-//#if MC >= 11700
-//#if MC < 12111
+//#if MC >= 11700 && MC < 12111
 //$$ import net.minecraft.resources.ResourceLocation;
-//#endif
 //#endif
 //#if MC >= 12111
 //$$ import net.minecraft.resources.Identifier;
@@ -46,112 +46,97 @@ import java.util.Set;
 //#endif
 
 public final class StonecutterCutsDeepslateCompat {
-    private static Boolean appliedState;
-    private static Object appliedRecipeManager;
+    private static Boolean appliedState; private static Object appliedRecipeManager;
     private static final Set<Object> GENERATED_ENTRIES=Collections.newSetFromMap(new IdentityHashMap<Object,Boolean>());
     private StonecutterCutsDeepslateCompat(){}
 
-    public static void refresh(MinecraftServer server,boolean force){
-        //#if MC >= 11700
-        //$$ if(server==null)return;
-        //$$ boolean enabled=DDSRules.stonecutterCutsDeepslate();
-        //$$ RecipeManager manager=server.getRecipeManager();
-        //$$ if(!force&&appliedRecipeManager==manager&&appliedState!=null&&appliedState.booleanValue()==enabled)return;
-        //$$ rebuild(server,manager,enabled); appliedRecipeManager=manager; appliedState=Boolean.valueOf(enabled);
+    public static void onRecipeManagerApplied(Object value){
+        //#if MC >= 12103
+        //$$ RecipeManager manager=(RecipeManager)value; boolean enabled=DDSRules.stonecutterCutsDeepslate(); StonecutterRecipeRuntimeCompat.replaceLoadedRecipes(manager,buildModernRecipes(manager,enabled)); remember(manager,enabled);
         //#endif
     }
-
+    public static void refreshLegacyLifecycle(MinecraftServer server){
+        //#if MC >= 11700 && MC < 12103
+        //$$ refresh(server,true);
+        //#endif
+    }
+    public static void refresh(MinecraftServer server,boolean force){
+        //#if MC >= 11700
+        //$$ if(server==null)return; boolean enabled=DDSRules.stonecutterCutsDeepslate(); RecipeManager manager=server.getRecipeManager();
+        //$$ if(!force&&appliedRecipeManager==manager&&appliedState!=null&&appliedState.booleanValue()==enabled)return;
+        //#if MC >= 12103
+        //$$ StonecutterRecipeRuntimeCompat.replace(server,manager,buildModernRecipes(manager,enabled));
+        //#else
+        //$$ rebuildLegacy(server,manager,enabled);
+        //#endif
+        //$$ remember(manager,enabled);
+        //#endif
+    }
     public static void reset(){appliedState=null; appliedRecipeManager=null; GENERATED_ENTRIES.clear();}
+    private static void remember(Object manager,boolean enabled){appliedRecipeManager=manager; appliedState=Boolean.valueOf(enabled);}
 
-    //#if MC >= 11700
-    //$$ private static void rebuild(MinecraftServer server,RecipeManager manager,boolean enabled){
+    //#if MC >= 12103
+    //$$ private static List<RecipeHolder<?>> buildModernRecipes(RecipeManager manager,boolean enabled){
+    //$$     List<RecipeHolder<?>> recipes=new ArrayList<RecipeHolder<?>>(manager.getRecipes()); recipes.removeIf(GENERATED_ENTRIES::contains); GENERATED_ENTRIES.clear();
+    //$$     if(enabled)addMirroredRecipes(((RecipeManagerBridge)(Object)manager).carpetDDSAddition$getRegistries(),recipes); return recipes;
+    //$$ }
+    //$$ private static void addMirroredRecipes(HolderLookup.Provider registries,List<RecipeHolder<?>> recipes){
+    //$$     List<RecipeHolder<?>> original=new ArrayList<RecipeHolder<?>>(recipes); Set<Object> usedIds=new HashSet<Object>(); for(RecipeHolder<?> holder:recipes)usedIds.add(holder.id());
+    //$$     ItemStack cobbled=new ItemStack(Items.COBBLED_DEEPSLATE),deepslate=new ItemStack(Items.DEEPSLATE);
+    //$$     for(RecipeHolder<?> holder:original){Recipe<?> recipe=holder.value(); if(!(recipe instanceof StonecutterRecipe))continue; StonecutterRecipe source=(StonecutterRecipe)recipe; if(!shouldMirror(source,cobbled,deepslate))continue;
+    //$$         ResourceKey<Recipe<?>> id=generatedRecipeId(holder); if(!usedIds.add(id))continue; StonecutterRecipe mirror=createModernMirror(registries,source,cobbled); RecipeHolder<StonecutterRecipe> generated=new RecipeHolder<StonecutterRecipe>(id,mirror); recipes.add(generated); GENERATED_ENTRIES.add(generated);}
+    //$$ }
+    //$$ private static StonecutterRecipe createModernMirror(HolderLookup.Provider registries,StonecutterRecipe source,ItemStack cobbled){ItemStack result=getModernResult(registries,source,cobbled);
+    //#if MC >= 260000
+    //$$     return new StonecutterRecipe(new Recipe.CommonInfo(source.showNotification()),Ingredient.of(Items.DEEPSLATE),ItemStackTemplate.fromNonEmptyStack(result));
+    //#else
+    //$$     return new StonecutterRecipe(source.group(),Ingredient.of(Items.DEEPSLATE),result);
+    //#endif
+    //$$ }
+    //$$ private static ItemStack getModernResult(HolderLookup.Provider registries,StonecutterRecipe source,ItemStack cobbled){
+    //#if MC >= 260000
+    //$$     return source.assemble(new SingleRecipeInput(cobbled)).copy();
+    //#else
+    //$$     return source.assemble(new SingleRecipeInput(cobbled),registries).copy();
+    //#endif
+    //$$ }
+    //#endif
+
+    //#if MC >= 11700 && MC < 12103
+    //$$ private static void rebuildLegacy(MinecraftServer server,RecipeManager manager,boolean enabled){
     //#if MC >= 12002
     //$$     List<RecipeHolder<?>> recipes=new ArrayList<RecipeHolder<?>>(manager.getRecipes());
     //#else
     //$$     List<Recipe<?>> recipes=new ArrayList<Recipe<?>>(manager.getRecipes());
     //#endif
-    //$$     recipes.removeIf(GENERATED_ENTRIES::contains); GENERATED_ENTRIES.clear();
-    //$$     if(enabled)addMirroredRecipes(server,recipes);
-    //$$     StonecutterRecipeRuntimeCompat.replace(server,manager,recipes);
+    //$$     recipes.removeIf(GENERATED_ENTRIES::contains); GENERATED_ENTRIES.clear(); if(enabled)addLegacyMirroredRecipes(server,recipes); StonecutterRecipeRuntimeCompat.replace(server,manager,recipes);
     //$$ }
-    //#endif
-
     //#if MC >= 12002
-    //$$ private static void addMirroredRecipes(MinecraftServer server,List<RecipeHolder<?>> recipes){
-    //$$     List<RecipeHolder<?>> originalRecipes=new ArrayList<RecipeHolder<?>>(recipes); Set<Object> usedIds=new HashSet<Object>();
-    //$$     for(RecipeHolder<?> holder:recipes)usedIds.add(holder.id());
-    //$$     ItemStack cobbledDeepslate=new ItemStack(Items.COBBLED_DEEPSLATE),deepslate=new ItemStack(Items.DEEPSLATE);
-    //$$     for(RecipeHolder<?> holder:originalRecipes){
-    //$$         Recipe<?> recipe=holder.value(); if(!(recipe instanceof StonecutterRecipe))continue;
-    //$$         StonecutterRecipe source=(StonecutterRecipe)recipe; if(!shouldMirror(source,cobbledDeepslate,deepslate))continue;
-    //#if MC >= 12103
-    //$$         ResourceKey<Recipe<?>> generatedId=generatedRecipeId(holder);
+    //$$ private static void addLegacyMirroredRecipes(MinecraftServer server,List<RecipeHolder<?>> recipes){
+    //$$     List<RecipeHolder<?>> original=new ArrayList<RecipeHolder<?>>(recipes); Set<Object> usedIds=new HashSet<Object>(); for(RecipeHolder<?> holder:recipes)usedIds.add(holder.id()); ItemStack cobbled=new ItemStack(Items.COBBLED_DEEPSLATE),deepslate=new ItemStack(Items.DEEPSLATE);
+    //$$     for(RecipeHolder<?> holder:original){Recipe<?> recipe=holder.value(); if(!(recipe instanceof StonecutterRecipe))continue; StonecutterRecipe source=(StonecutterRecipe)recipe; if(!shouldMirror(source,cobbled,deepslate))continue; ResourceLocation id=generatedRecipeId(holder.id()); if(!usedIds.add(id))continue; StonecutterRecipe mirror=createLegacyMirror(server,source,cobbled,id); RecipeHolder<StonecutterRecipe> generated=new RecipeHolder<StonecutterRecipe>(id,mirror); recipes.add(generated); GENERATED_ENTRIES.add(generated);}
+    //$$ }
     //#else
-    //$$         ResourceLocation generatedId=generatedRecipeId(holder.id());
-    //#endif
-    //$$         if(!usedIds.add(generatedId))continue;
-    //$$         StonecutterRecipe mirror=createMirror(server,source,cobbledDeepslate,generatedId);
-    //$$         RecipeHolder<StonecutterRecipe> generated=new RecipeHolder<StonecutterRecipe>(generatedId,mirror); recipes.add(generated); GENERATED_ENTRIES.add(generated);
-    //$$     }
-    //$$ }
-    //#elseif MC >= 11700
-    //$$ private static void addMirroredRecipes(MinecraftServer server,List<Recipe<?>> recipes){
-    //$$     List<Recipe<?>> originalRecipes=new ArrayList<Recipe<?>>(recipes); Set<Object> usedIds=new HashSet<Object>();
-    //$$     for(Recipe<?> recipe:recipes)usedIds.add(recipe.getId());
-    //$$     ItemStack cobbledDeepslate=new ItemStack(Items.COBBLED_DEEPSLATE),deepslate=new ItemStack(Items.DEEPSLATE);
-    //$$     for(Recipe<?> recipe:originalRecipes){
-    //$$         if(!(recipe instanceof StonecutterRecipe))continue; StonecutterRecipe source=(StonecutterRecipe)recipe;
-    //$$         if(!shouldMirror(source,cobbledDeepslate,deepslate))continue;
-    //$$         ResourceLocation generatedId=generatedRecipeId(source.getId()); if(!usedIds.add(generatedId))continue;
-    //$$         StonecutterRecipe mirror=createMirror(server,source,cobbledDeepslate,generatedId); recipes.add(mirror); GENERATED_ENTRIES.add(mirror);
-    //$$     }
+    //$$ private static void addLegacyMirroredRecipes(MinecraftServer server,List<Recipe<?>> recipes){
+    //$$     List<Recipe<?>> original=new ArrayList<Recipe<?>>(recipes); Set<Object> usedIds=new HashSet<Object>(); for(Recipe<?> recipe:recipes)usedIds.add(recipe.getId()); ItemStack cobbled=new ItemStack(Items.COBBLED_DEEPSLATE),deepslate=new ItemStack(Items.DEEPSLATE);
+    //$$     for(Recipe<?> recipe:original){if(!(recipe instanceof StonecutterRecipe))continue; StonecutterRecipe source=(StonecutterRecipe)recipe; if(!shouldMirror(source,cobbled,deepslate))continue; ResourceLocation id=generatedRecipeId(source.getId()); if(!usedIds.add(id))continue; StonecutterRecipe mirror=createLegacyMirror(server,source,cobbled,id); recipes.add(mirror); GENERATED_ENTRIES.add(mirror);}
     //$$ }
     //#endif
-
-    //#if MC >= 11700
-    //$$ private static boolean shouldMirror(StonecutterRecipe source,ItemStack cobbledDeepslate,ItemStack deepslate){
-    //#if MC >= 12103
-    //$$     Ingredient ingredient=source.input();
-    //#else
-    //$$     Ingredient ingredient=source.getIngredients().get(0);
-    //#endif
-    //$$     return ingredient.test(cobbledDeepslate)&&!ingredient.test(deepslate);
-    //$$ }
-    //#endif
-
-    //#if MC >= 11700
-    //$$ private static StonecutterRecipe createMirror(MinecraftServer server,StonecutterRecipe source,ItemStack cobbledDeepslate,Object generatedId){
-    //$$     ItemStack result=getResult(server,source,cobbledDeepslate);
-    //#if MC >= 260000
-    //$$     return new StonecutterRecipe(new Recipe.CommonInfo(source.showNotification()),Ingredient.of(Items.DEEPSLATE),ItemStackTemplate.fromNonEmptyStack(result));
-    //#elseif MC >= 12103
-    //$$     return new StonecutterRecipe(source.group(),Ingredient.of(Items.DEEPSLATE),result);
-    //#elseif MC >= 12002
+    //$$ private static StonecutterRecipe createLegacyMirror(MinecraftServer server,StonecutterRecipe source,ItemStack cobbled,ResourceLocation id){ItemStack result=getLegacyResult(server,source);
+    //#if MC >= 12002
     //$$     return new StonecutterRecipe(source.getGroup(),Ingredient.of(Items.DEEPSLATE),result);
     //#else
-    //$$     return new StonecutterRecipe((ResourceLocation)generatedId,source.getGroup(),Ingredient.of(Items.DEEPSLATE),result);
+    //$$     return new StonecutterRecipe(id,source.getGroup(),Ingredient.of(Items.DEEPSLATE),result);
     //#endif
     //$$ }
-    //#endif
-
-    //#if MC >= 11700
-    //$$ private static ItemStack getResult(MinecraftServer server,StonecutterRecipe source,ItemStack cobbledDeepslate){
-    //#if MC >= 260000
-    //$$     return source.assemble(new SingleRecipeInput(cobbledDeepslate)).copy();
-    //#elseif MC >= 12103
-    //$$     return source.assemble(new SingleRecipeInput(cobbledDeepslate),server.registryAccess()).copy();
-    //#elseif MC >= 11904
+    //$$ private static ItemStack getLegacyResult(MinecraftServer server,StonecutterRecipe source){
+    //#if MC >= 11904
     //$$     return source.getResultItem(server.registryAccess()).copy();
     //#else
     //$$     return source.getResultItem().copy();
     //#endif
     //$$ }
-    //#endif
-
-    //#if MC >= 11700
-    //#if MC < 12103
-    //$$ private static ResourceLocation generatedRecipeId(ResourceLocation sourceId){
-    //$$     String path="stonecutter_cuts_deepslate/"+sourceId.getNamespace()+"/"+sourceId.getPath();
+    //$$ private static ResourceLocation generatedRecipeId(ResourceLocation sourceId){String path="stonecutter_cuts_deepslate/"+sourceId.getNamespace()+"/"+sourceId.getPath();
     //#if MC >= 12101
     //$$     return ResourceLocation.fromNamespaceAndPath(CarpetDDSAddition.MOD_ID,path);
     //#else
@@ -159,16 +144,24 @@ public final class StonecutterCutsDeepslateCompat {
     //#endif
     //$$ }
     //#endif
+
+    //#if MC >= 11700
+    //$$ private static boolean shouldMirror(StonecutterRecipe source,ItemStack cobbled,ItemStack deepslate){
+    //#if MC >= 12103
+    //$$     Ingredient ingredient=source.input();
+    //#else
+    //$$     Ingredient ingredient=source.getIngredients().get(0);
+    //#endif
+    //$$     return ingredient.test(cobbled)&&!ingredient.test(deepslate);
+    //$$ }
     //#endif
 
     //#if MC >= 12103
     //$$ private static ResourceKey<Recipe<?>> generatedRecipeId(RecipeHolder<?> sourceHolder){
     //#if MC >= 12111
-    //$$     Identifier sourceId=sourceHolder.id().identifier();
-    //$$     Identifier generatedId=Identifier.fromNamespaceAndPath(CarpetDDSAddition.MOD_ID,"stonecutter_cuts_deepslate/"+sourceId.getNamespace()+"/"+sourceId.getPath());
+    //$$     Identifier sourceId=sourceHolder.id().identifier(); Identifier generatedId=Identifier.fromNamespaceAndPath(CarpetDDSAddition.MOD_ID,"stonecutter_cuts_deepslate/"+sourceId.getNamespace()+"/"+sourceId.getPath());
     //#else
-    //$$     ResourceLocation sourceId=sourceHolder.id().location();
-    //$$     ResourceLocation generatedId=ResourceLocation.fromNamespaceAndPath(CarpetDDSAddition.MOD_ID,"stonecutter_cuts_deepslate/"+sourceId.getNamespace()+"/"+sourceId.getPath());
+    //$$     ResourceLocation sourceId=sourceHolder.id().location(); ResourceLocation generatedId=ResourceLocation.fromNamespaceAndPath(CarpetDDSAddition.MOD_ID,"stonecutter_cuts_deepslate/"+sourceId.getNamespace()+"/"+sourceId.getPath());
     //#endif
     //$$     return ResourceKey.create(Registries.RECIPE,generatedId);
     //$$ }

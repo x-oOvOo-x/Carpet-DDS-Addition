@@ -17,26 +17,26 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 
 /** Negotiated DDS client connection/session state. */
 final class DdsClientState {
-    private boolean serverProtocolActive;
-    private Set<String> serverSupportedC2S = Collections.emptySet();
-    private long lastHelloNanos;
+    private volatile boolean serverProtocolActive;
+    private volatile Set<String> serverSupportedC2S = Collections.emptySet();
+    private volatile long lastHelloNanos;
 
     //#if MC >= 11404 && MC <= 260200
-    private WeakReference<ClientPacketListener> connectionRef = new WeakReference<>(null);
+    private volatile WeakReference<ClientPacketListener> connectionRef = new WeakReference<>(null);
     //#endif
 
     boolean isServerProtocolActive() { return serverProtocolActive; }
     boolean doesServerSupport(String packetId) { return serverProtocolActive && serverSupportedC2S.contains(packetId); }
 
     void updateHandshake(boolean active, Set<String> supportedC2S) {
-        serverProtocolActive = active;
         serverSupportedC2S = !active || supportedC2S == null || supportedC2S.isEmpty()
                 ? Collections.emptySet() : Collections.unmodifiableSet(new LinkedHashSet<>(supportedC2S));
+        serverProtocolActive = active;
     }
 
     void resetProtocolState() {
-        serverProtocolActive = false;
         serverSupportedC2S = Collections.emptySet();
+        serverProtocolActive = false;
         lastHelloNanos = 0L;
     }
 

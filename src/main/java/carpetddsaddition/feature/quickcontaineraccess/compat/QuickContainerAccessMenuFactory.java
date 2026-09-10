@@ -55,7 +55,7 @@ final class QuickContainerAccessMenuFactory {
         if (kind == QuickContainerAccessItems.MenuKind.SHULKER) return createShulkerMenu(containerId, inventory, source, openedSize);
         if (kind == QuickContainerAccessItems.MenuKind.ENDER_CHEST) {
             if (enderMenuFactory != null) {
-                AbstractContainerMenu enhanced = enderMenuFactory.ddsCreateEnderMenu(containerId, inventory);
+                AbstractContainerMenu enhanced = enderMenuFactory.ddsCreateEnderMenu(containerId, inventory, viewer);
                 if (enhanced != null) return enhanced;
             }
             return createEnderChestMenu(containerId, inventory, owner, openedSize);

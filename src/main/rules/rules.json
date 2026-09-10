@@ -18,6 +18,23 @@
       }
     },
     {
+      "name": "candleFreePlacement",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11700,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "蜡烛自由放置"
+      },
+      "description": {
+        "en_us": "Treats candles like ordinary blocks for placement and survival: they no longer require support below and can be placed into the adjacent valid space when using any block face. Candle stacking, lighting, extinguishing and other vanilla behavior remain unchanged.",
+        "zh_cn": "使蜡烛在放置与存活判定上按普通方块处理，不再要求下方存在支撑；点击方块任意面时，可将蜡烛放入对应相邻的可放置空间。蜡烛叠加、点燃、熄灭等其他机制保持原版。"
+      }
+    },
+    {
       "name": "noCampfireDamage",
       "type": "boolean",
       "default": false,
@@ -53,7 +70,7 @@
       "name": "noBabyPiglinItemPickup",
       "type": "boolean",
       "default": false,
-      "minMc": 11601,
+      "minMc": 11604,
       "categories": [
         "feature",
         "survival"
@@ -85,17 +102,17 @@
     {
       "name": "naturalPassiveSpawning",
       "type": "String",
-      "default": "all",
+      "default": "none",
       "categories": [
         "optimization",
         "survival"
       ],
       "displayName": {
-        "zh_cn": "被动生物自然生成控制"
+        "zh_cn": "禁止被动生物自然生成"
       },
       "description": {
-        "en_us": "Controls natural passive mob spawning. Use all, none, or a comma-separated combination of land, fish, squid, axolotl, bat and dolphin. Disabling land also disables initial creature spawning in newly generated chunks.",
-        "zh_cn": "控制被动生物的自然生成。可设为 all、none，或使用逗号组合 land、fish、squid、axolotl、bat、dolphin。关闭 land 时也会禁止新区块首次生成陆地生物。"
+        "en_us": "Prevents selected passive mob groups from spawning naturally. Use none for vanilla spawning, all to block every listed group, or a comma-separated combination of land, fish, squid, axolotl, bat and dolphin. Selecting land also blocks initial creature spawning in newly generated chunks.",
+        "zh_cn": "禁止所选被动生物类别自然生成。none 保持原版生成，all 禁止全部已列类别，也可使用逗号组合 land、fish、squid、axolotl、bat、dolphin；选择 land 时也会禁止新区块首次生成陆地生物。"
       }
     },
     {
@@ -216,6 +233,23 @@
       }
     },
     {
+      "name": "crafterRecipeLock",
+      "type": "boolean",
+      "default": false,
+      "minMc": 12004,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "合成器配方锁定"
+      },
+      "description": {
+        "en_us": "Allows individual Crafters to lock a valid recipe with honeycomb, preserving one template item in every recipe slot; axes remove the lock. Comparator output ignores locked template slots that have only their reserved item remaining.",
+        "zh_cn": "允许使用蜜脾锁定单个合成器中的有效配方，使各配方槽保留最后一个模板物品；使用斧可解除锁定。比较器会忽略仅剩保留模板物品的锁定槽位。"
+      }
+    },
+    {
       "name": "ddsNetworkProtocol",
       "type": "boolean",
       "default": true,
@@ -289,7 +323,7 @@
       "name": "fakePlayerInventory",
       "type": "boolean",
       "default": false,
-      "minMc": 11902,
+      "minMc": 11904,
       "maxMc": 260200,
       "categories": [
         "feature",
@@ -333,8 +367,26 @@
         "zh_cn": "安全旁观模式"
       },
       "description": {
-        "en_us": "Allows survival players in a safe state to enter a protected spectator camera with /c, return to the saved origin while remaining in spectator with /c back, and directly spectate another player with /c follow <player>. Leaving camera mode always returns the player to the original position before restoring survival mode.",
-        "zh_cn": "允许处于安全状态的生存玩家使用 /c 进入受保护的旁观模式；使用 /c back 返回进入旁观时的位置并继续保持旁观；使用 /c follow <玩家> 直接观察指定玩家。退出旁观模式时会先返回最初保存的位置，再恢复为生存模式。"
+        "en_us": "Allows eligible non-mounted Survival players to enter a protected spectator camera with /c, return to the saved origin while remaining in spectator with /c back, and directly spectate another player with /c follow <player>. Leaving camera mode always returns the player to the original position before restoring survival mode.",
+        "zh_cn": "允许符合条件且未骑乘的生存玩家使用 /c 进入受保护的旁观模式；使用 /c back 返回进入旁观时的位置并继续保持旁观；使用 /c follow <玩家> 直接观察指定玩家。退出旁观模式时会先返回最初保存的位置，再恢复为生存模式。"
+      }
+    },
+    {
+      "name": "noCameraSurvivalRestrictions",
+      "type": "boolean",
+      "default": false,
+      "minMc": 11605,
+      "maxMc": 260200,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "解除 Camera 生存限制"
+      },
+      "description": {
+        "en_us": "When enabled, removes commandCamera's ground, full-air and not-on-fire entry restrictions for living, non-mounted Survival players, allowing /c while airborne, flying or falling, underwater, on fire, or falling into the void before death. Camera session persistence and saved-origin restoration remain unchanged.",
+        "zh_cn": "开启后解除 commandCamera 对地面、满空气值和未着火状态的进入限制，使仍存活、处于生存模式且未骑乘的玩家可在悬空、飞行或下落、水中、着火以及掉入虚空但尚未死亡时使用 /c；Camera Session 持久化和原点恢复机制保持不变。"
       }
     },
     {
@@ -499,6 +551,22 @@
       "description": {
         "en_us": "Allows a damaged Mending item held in the offhand to periodically consume the player's stored experience for repair. Each XP repairs up to 2 durability.",
         "zh_cn": "副手持有受损且带有经验修补附魔的物品时，会周期性消耗玩家已储存的经验进行修复。每消耗1点经验最多恢复2点耐久。"
+      }
+    },
+    {
+      "name": "easyMining",
+      "type": "String",
+      "default": "false",
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "简易挖掘"
+      },
+      "description": {
+        "en_us": "Multiplies selected blocks' vanilla mining progress by 20 without changing hardness, tool requirements or drops. Use obsidian, crying_obsidian (1.16+), deepslate (1.17+, including deepslate ores), ores (vanilla ore blocks), or all; combine modes with commas. false disables the rule. Invalid combinations disable acceleration.",
+        "zh_cn": "将选中方块的原版挖掘进度提高至20倍，不修改硬度、工具要求或掉落。支持 obsidian、crying_obsidian（1.16+）、deepslate（1.17+，含深层矿石）、ores（原版矿石）及 all，可用英文逗号组合；false 关闭。无效组合不加速。"
       }
     }
   ]

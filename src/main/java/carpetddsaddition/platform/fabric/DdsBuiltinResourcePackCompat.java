@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.platform.fabric;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpetddsaddition.CarpetDDSAddition;
 //$$ import net.fabricmc.api.EnvType;
 //$$ import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
@@ -24,7 +24,7 @@ public final class DdsBuiltinResourcePackCompat {
 
     @SuppressWarnings("deprecation")
     public static void register() {
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$         FabricLoader loader = FabricLoader.getInstance();
 //$$         if (loader.getEnvironmentType() != EnvType.CLIENT) return;
 //$$         ResourceManagerHelper.registerBuiltinResourcePack(
@@ -39,7 +39,7 @@ public final class DdsBuiltinResourcePackCompat {
 //$$     private static Identifier id(String path) { return Identifier.fromNamespaceAndPath(CarpetDDSAddition.MOD_ID, path); }
 //#elseif MC >= 12101 && MC <= 12110
 //$$     private static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(CarpetDDSAddition.MOD_ID, path); }
-//#elseif MC >= 11902
+//#elseif MC >= 11904
 //$$     private static ResourceLocation id(String path) { return new ResourceLocation(CarpetDDSAddition.MOD_ID, path); }
 //#endif
 }

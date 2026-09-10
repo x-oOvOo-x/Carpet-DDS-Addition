@@ -6,12 +6,13 @@
  */
 package carpetddsaddition.mixin.integration.carpet.gca.client;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerEnderChestMenu;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerMenu;
-//$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerMenus;
+//$$ import carpetddsaddition.integration.gca.fakeplayer.client.DdsFakePlayerClientNetwork;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.client.DdsFakePlayerEnderChestScreen;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.client.DdsFakePlayerScreen;
+//$$ import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerPackets;
 //$$ import net.minecraft.client.Minecraft;
 //$$ import net.minecraft.client.gui.screens.MenuScreens;
 //$$ import net.minecraft.network.chat.Component;
@@ -26,11 +27,15 @@ package carpetddsaddition.mixin.integration.carpet.gca.client;
 //$$     @Inject(method = "create", at = @At("HEAD"), cancellable = true)
 //$$     private static void dds$createFakePlayerScreen(MenuType type, Minecraft minecraft, int containerId,
 //$$                                                    Component title, CallbackInfo ci) {
-//$$         int enderRows = DdsFakePlayerMenus.enderRows(type);
-//$$         if (type != DdsFakePlayerMenus.type() && enderRows == 0) return;
+//$$         int layout = DdsFakePlayerClientNetwork.consumeOpenMenu(containerId);
+//$$         if (layout == DdsFakePlayerPackets.MENU_NONE) return;
+//$$         boolean expectedType = layout == DdsFakePlayerPackets.MENU_ENDER_3
+//$$                 ? type == MenuType.GENERIC_9x3 : type == MenuType.GENERIC_9x6;
+//$$         if (!expectedType) return;
 //$$         if (minecraft.player == null) { ci.cancel(); return; }
-//$$         if (enderRows != 0) {
-//$$             DdsFakePlayerEnderChestMenu menu = DdsFakePlayerEnderChestMenu.client(containerId, minecraft.player.getInventory(), enderRows);
+//$$         if (layout == DdsFakePlayerPackets.MENU_ENDER_3 || layout == DdsFakePlayerPackets.MENU_ENDER_6) {
+//$$             int rows = layout == DdsFakePlayerPackets.MENU_ENDER_3 ? 3 : 6;
+//$$             DdsFakePlayerEnderChestMenu menu = DdsFakePlayerEnderChestMenu.client(containerId, minecraft.player.getInventory(), rows);
 //$$             minecraft.player.containerMenu = menu;
 //$$             setScreen(minecraft, new DdsFakePlayerEnderChestScreen(menu, minecraft.player.getInventory(), title));
 //$$         } else {

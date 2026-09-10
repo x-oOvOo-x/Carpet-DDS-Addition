@@ -43,7 +43,7 @@ plugins {
 
 /*
  * Apply shared per-version build overlays before common.gradle is evaluated.
- * Each overlay defers Loom-dependent configuration until after evaluation.
+ * CozyUI+ dependencies and registration stay isolated from the common server entrypoint.
  */
 def fakePlayerUiPackScript = file('gradle/fake-player-ui-resource-pack.gradle')
 def versionRunIsolationScript = file('gradle/version-run-isolation.gradle')

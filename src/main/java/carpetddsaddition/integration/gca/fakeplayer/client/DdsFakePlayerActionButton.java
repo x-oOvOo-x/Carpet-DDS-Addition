@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer.client;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import net.minecraft.network.chat.Component;
 //$$ import java.util.function.BooleanSupplier;
 //$$

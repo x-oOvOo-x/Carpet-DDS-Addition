@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpet.patches.EntityPlayerMPFake;
 //$$ import carpetddsaddition.feature.fakeplayerinventory.FakePlayerInventory;
 //$$ import net.minecraft.network.chat.Component;
@@ -26,16 +26,16 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$             return openEnderChest(viewer, target);
 //$$         }
 //$$         if (!DdsGcaFakePlayerBridge.canEnhanceInventory(viewer)) return false;
-//$$         viewer.openMenu(new SimpleMenuProvider((id, inventory, player) -> DdsFakePlayerMenu.server(id, inventory, target), target.getName()));
-//$$         return true;
+//$$         return viewer.openMenu(new SimpleMenuProvider((id, inventory, player) ->
+//$$                 DdsFakePlayerMenu.server(id, inventory, target, (ServerPlayer) player), target.getName())).isPresent();
 //$$     }
 //$$
 //$$     private static boolean openEnderChest(ServerPlayer viewer, EntityPlayerMPFake target) {
 //$$         int size = target.getEnderChestInventory().getContainerSize();
 //$$         if (size != 27 && size != 54) return false;
 //$$         Component title = target.getName();
-//$$         viewer.openMenu(new SimpleMenuProvider((id, inventory, player) -> DdsFakePlayerEnderChestMenu.create(id, inventory, target), title));
-//$$         return true;
+//$$         return viewer.openMenu(new SimpleMenuProvider((id, inventory, player) ->
+//$$                 DdsFakePlayerEnderChestMenu.create(id, inventory, target, (ServerPlayer) player), title)).isPresent();
 //$$     }
 //$$
 //$$     public static void onRuleChanged(MinecraftServer server) {

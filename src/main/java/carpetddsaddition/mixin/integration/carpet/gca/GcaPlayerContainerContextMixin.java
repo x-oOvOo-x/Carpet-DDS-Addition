@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.mixin.integration.carpet.gca;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpetddsaddition.core.inventory.DdsDirectSlotAccess;
 //$$ import carpetddsaddition.core.inventory.DdsInventoryOwnerView;
 //$$ import net.minecraft.server.level.ServerPlayer;

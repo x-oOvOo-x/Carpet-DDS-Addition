@@ -8,7 +8,7 @@ package carpetddsaddition.integration.gca.fakeplayer.network;
 
 import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerAction;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpetddsaddition.network.DdsClientNetwork;
 //$$ import net.minecraft.nbt.CompoundTag;
 //#endif
@@ -18,7 +18,7 @@ public final class DdsFakePlayerClientNetwork {
     private DdsFakePlayerClientNetwork() {}
 
     public static boolean canUseActions() {
-        //#if MC >= 11902 && MC <= 260200
+        //#if MC >= 11904 && MC <= 260200
         //$$ return DdsClientNetwork.canSend(DdsFakePlayerPackets.ACTION_C2S);
         //#else
         return false;
@@ -26,7 +26,7 @@ public final class DdsFakePlayerClientNetwork {
     }
 
     public static boolean sendAction(DdsFakePlayerAction action, int value) {
-        //#if MC >= 11902 && MC <= 260200
+        //#if MC >= 11904 && MC <= 260200
         //$$ if (!canUseActions() || action == null) return false;
         //$$ CompoundTag data = new CompoundTag();
         //$$ data.putString("action", action.wireName());

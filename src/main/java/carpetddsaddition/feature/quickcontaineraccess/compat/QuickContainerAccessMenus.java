@@ -79,6 +79,7 @@ final class QuickContainerAccessMenus {
         }, QuickContainerAccessMenuFactory.titleFor(menuSource, kind));
         boolean opened = player.openMenu(provider).isPresent();
         if (!opened) return false;
+        QuickContainerAccessCloseDebounce.opened(player.containerMenu);
         QuickContainerAccessSounds.sendOpen(player, kind);
         QuickContainerAccessServerNetwork.sendNavigationState(player,
                 QuickContainerAccessCompat.canNavigateBack(player.containerMenu, player), false, false);

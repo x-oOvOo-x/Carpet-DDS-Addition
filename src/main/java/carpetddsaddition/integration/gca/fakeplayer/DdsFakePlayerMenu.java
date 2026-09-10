@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpet.helpers.EntityPlayerActionPack;
 //$$ import carpet.helpers.EntityPlayerActionPack.ActionType;
 //$$ import carpet.patches.EntityPlayerMPFake;
@@ -14,6 +14,8 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$ import carpetddsaddition.core.inventory.DdsInventoryOwnerView;
 //$$ import carpetddsaddition.core.inventory.DdsReopenableMenu;
 //$$ import carpetddsaddition.feature.fakeplayerinventory.FakePlayerInventory;
+//$$ import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerServerNetwork;
+//$$ import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerPackets;
 //$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.world.Container;
 //$$ import net.minecraft.world.SimpleContainer;
@@ -24,6 +26,7 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$ import net.minecraft.world.inventory.AbstractContainerMenu;
 //$$ import net.minecraft.world.inventory.ContainerData;
 //$$ import net.minecraft.world.inventory.InventoryMenu;
+//$$ import net.minecraft.world.inventory.MenuType;
 //$$ import net.minecraft.world.inventory.SimpleContainerData;
 //$$ import net.minecraft.world.inventory.Slot;
 //$$ import net.minecraft.world.item.ItemStack;
@@ -39,12 +42,13 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$     public static DdsFakePlayerMenu client(int containerId, Inventory viewerInventory) {
 //$$         return new DdsFakePlayerMenu(containerId, viewerInventory, null, new SimpleContainer(41), new SimpleContainerData(5));
 //$$     }
-//$$     public static DdsFakePlayerMenu server(int containerId, Inventory viewerInventory, EntityPlayerMPFake target) {
+//$$     public static DdsFakePlayerMenu server(int containerId, Inventory viewerInventory, EntityPlayerMPFake target, ServerPlayer viewer) {
+//$$         if (!DdsFakePlayerServerNetwork.sendOpenMenu(viewer, containerId, DdsFakePlayerPackets.MENU_INVENTORY)) return null;
 //$$         return new DdsFakePlayerMenu(containerId, viewerInventory, target, target.getInventory(), new TargetStateData(target));
 //$$     }
 //$$
 //$$     private DdsFakePlayerMenu(int containerId, Inventory viewerInventory, EntityPlayerMPFake target, Container fakeInventory, ContainerData state) {
-//$$         super(DdsFakePlayerMenus.type(), containerId);
+//$$         super(MenuType.GENERIC_9x6, containerId);
 //$$         this.target = target; this.state = state;
 //$$         Container canonical = target == null ? null : fakeInventory;
 //$$         addFakeEquipmentSlots(new DdsMappedContainer(fakeInventory, EQUIPMENT_MAPPING, target, canonical), target);
@@ -78,13 +82,13 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$                 && target.isAlive() && player.distanceToSqr(target) <= 64.0D;
 //$$     }
 //$$     @Override public ServerPlayer ddsInventoryOwner() { return target; }
-//$$     @Override public AbstractContainerMenu ddsCreateEnderMenu(int id, Inventory viewerInventory) {
-//$$         return target == null ? null : DdsFakePlayerEnderChestMenu.create(id, viewerInventory, target);
+//$$     @Override public AbstractContainerMenu ddsCreateEnderMenu(int id, Inventory viewerInventory, ServerPlayer viewer) {
+//$$         return target == null ? null : DdsFakePlayerEnderChestMenu.create(id, viewerInventory, target, viewer);
 //$$     }
-//$$     @Override public boolean ddsCanReopen(ServerPlayer viewer) { return target != null && stillValid(viewer); }
+//$$     @Override public boolean ddsCanReopen(ServerPlayer viewer) { return target != null && stillValid(viewer) && DdsGcaFakePlayerBridge.canEnhanceInventory(viewer); }
 //$$     @Override public boolean ddsReopen(ServerPlayer viewer) {
 //$$         if (!ddsCanReopen(viewer)) return false;
-//$$         return viewer.openMenu(new SimpleMenuProvider((id, inventory, player) -> server(id, inventory, target), target.getName())).isPresent();
+//$$         return viewer.openMenu(new SimpleMenuProvider((id, inventory, player) -> server(id, inventory, target, (ServerPlayer) player), target.getName())).isPresent();
 //$$     }
 //$$
 //$$     @Override public ItemStack quickMoveStack(Player player, int slotIndex) {

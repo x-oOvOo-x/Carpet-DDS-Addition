@@ -89,7 +89,11 @@ public final class QuickContainerAccessCompat {
             if (rightPickup && carried.isEmpty()) {
                 QuickContainerAccessSession.PathNode sourceNode = active.path.findSourceMenuSlot(menu, slotId);
                 if (sourceNode != null) {
-                    if (sourceNode == active.path) { serverPlayer.closeContainer(); return true; }
+                    if (sourceNode == active.path) {
+                        if (QuickContainerAccessCloseDebounce.suppress(menu)) return true;
+                        serverPlayer.closeContainer();
+                        return true;
+                    }
                     if (sourceNode.kind == QuickContainerAccessItems.MenuKind.ENDER_CHEST) {
                         QuickContainerAccessSession.syncMenu(serverPlayer, menu);
                         return QuickContainerAccessMenus.navigateBack(serverPlayer, menu, sourceNode);
@@ -196,6 +200,7 @@ public final class QuickContainerAccessCompat {
     }
     public static void onMenuRemoved(AbstractContainerMenu menu, Player player) {
         //#if MC >= 11404 && MC <= 260200
+        QuickContainerAccessCloseDebounce.forget(menu);
         QuickContainerAccessSession.Session session = QuickContainerAccessSession.finish(menu, player);
         if (session != null) QuickContainerAccessMenus.sendCloseSound(session);
         //#endif
@@ -207,7 +212,7 @@ public final class QuickContainerAccessCompat {
     }
     public static void resetRuntimeState() {
         //#if MC >= 11404 && MC <= 260200
-        QuickContainerAccessSession.clearAll(); QuickContainerAccessNavigation.clear(); QuickContainerAccessAmsCompat.reset();
+        QuickContainerAccessSession.clearAll(); QuickContainerAccessNavigation.clear(); QuickContainerAccessCloseDebounce.clear(); QuickContainerAccessAmsCompat.reset();
         //#endif
     }
     public static boolean handlePortableAnvilUse(AbstractContainerMenu menu) {

@@ -9,11 +9,11 @@ package carpetddsaddition.feature.stonecuttercutsdeepslate;
 import carpetddsaddition.core.lifecycle.DdsLifecycleComponent;
 import net.minecraft.server.MinecraftServer;
 
-/** Owns dynamically generated deepslate stonecutter recipe lifecycle. */
+/** Keeps the legacy recipe-manager lifecycle path and clears runtime state. */
 public final class StonecutterCutsDeepslateLifecycle implements DdsLifecycleComponent {
-    public static final StonecutterCutsDeepslateLifecycle INSTANCE = new StonecutterCutsDeepslateLifecycle();
+    public static final StonecutterCutsDeepslateLifecycle INSTANCE=new StonecutterCutsDeepslateLifecycle();
     private StonecutterCutsDeepslateLifecycle() {}
-    @Override public void onServerLoaded(MinecraftServer server) { StonecutterCutsDeepslate.refresh(server, true); }
-    @Override public void onReload(MinecraftServer server) { StonecutterCutsDeepslate.refresh(server, true); }
-    @Override public void onServerClosed(MinecraftServer server) { StonecutterCutsDeepslate.reset(); }
+    @Override public void onServerLoaded(MinecraftServer server){StonecutterCutsDeepslate.refreshLegacyLifecycle(server);}
+    @Override public void onReload(MinecraftServer server){StonecutterCutsDeepslate.refreshLegacyLifecycle(server);}
+    @Override public void onServerClosed(MinecraftServer server){StonecutterCutsDeepslate.reset();}
 }

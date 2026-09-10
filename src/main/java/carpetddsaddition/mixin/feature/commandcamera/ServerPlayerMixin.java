@@ -16,17 +16,22 @@ package carpetddsaddition.mixin.feature.commandcamera;
 //$$ import org.spongepowered.asm.mixin.Mixin;
 //$$ import org.spongepowered.asm.mixin.injection.At;
 //$$ import org.spongepowered.asm.mixin.injection.Inject;
+//$$ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 //$$ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 //#else
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 //#endif
 
-/** Consumes void damage during an active DDS Camera session and triggers normal restore semantics. */
+/** Reasserts persistent Camera state and consumes void damage without deleting the session. */
 @SuppressWarnings("unused")
 //#if MC >= 11601 && MC <= 260200
 //$$ @Mixin(ServerPlayer.class)
 //$$ public abstract class ServerPlayerMixin {
+//$$     @Inject(method = "tick", at = @At("HEAD"))
+//$$     private void carpetDDSAddition$selfHealCameraSession(CallbackInfo ci) {
+//$$         CommandCameraCompat.ensureCameraState((ServerPlayer) (Object) this);
+//$$     }
     //#if MC <= 12101
     //$$ @Inject(
     //$$         method = "hurt(" +

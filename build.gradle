@@ -9,16 +9,16 @@ plugins {
 
 
 /*
- * Supported Minecraft versions.
+ * Active Minecraft build/release versions.
  *
- * settings.json is the single source of truth for the human-facing version
- * order. Versions are always maintained from newest to oldest.
+ * settings.json keeps the complete preprocessor project graph in versions and
+ * the currently maintained build/release matrix in activeVersions.
  */
 def versionConfig = new JsonSlurper().parseText(
         file('settings.json').getText('UTF-8')
 )
 
-def supportedVersions = versionConfig.versions.collect {
+def supportedVersions = (versionConfig.activeVersions ?: versionConfig.versions).collect {
     it.toString()
 }
 
@@ -61,18 +61,9 @@ preprocess {
     def mc1201 = createNode('1.20.1', 1_20_01, '')
 
     def mc1194 = createNode('1.19.4', 1_19_04, '')
-    def mc1193 = createNode('1.19.3', 1_19_03, '')
-    def mc1192 = createNode('1.19.2', 1_19_02, '')
-
     def mc1182 = createNode('1.18.2', 1_18_02, '')
-    def mc118 = createNode('1.18', 1_18_00, '')
     def mc1171 = createNode('1.17.1', 1_17_01, '')
-
     def mc1165 = createNode('1.16.5', 1_16_05, '')
-    def mc1163 = createNode('1.16.3', 1_16_03, '')
-    def mc1162 = createNode('1.16.2', 1_16_02, '')
-    def mc1161 = createNode('1.16.1', 1_16_01, '')
-
     def mc1152 = createNode('1.15.2', 1_15_02, '')
     def mc1144 = createNode('1.14.4', 1_14_04, '')
 
@@ -80,14 +71,9 @@ preprocess {
     /*
      * Preprocessor mapping topology.
      *
-     * IMPORTANT:
-     *
-     * The declaration/build/display order is newest -> oldest.
-     *
-     * The mapping graph below is intentionally kept in its established
-     * chronological topology because these links correspond to the existing
-     * mapping bridge files.
-     * 1.15.2 is only a historical mapping-graph anchor.
+     * The declaration/build/display order is newest -> oldest, while the graph
+     * keeps the chronological mapping direction rooted at the 1.15.2 anchor.
+     * Retired empty-mapping nodes are skipped through direct bridge links.
      */
     mc1152.link(
             mc1144,
@@ -95,23 +81,8 @@ preprocess {
     )
 
     mc1152.link(
-            mc1161,
-            file('versions/mapping-1.15.2-1.16.1.txt')
-    )
-
-    mc1161.link(
-            mc1162,
-            file('versions/mapping-1.16.1-1.16.2.txt')
-    )
-
-    mc1162.link(
-            mc1163,
-            file('versions/mapping-1.16.2-1.16.3.txt')
-    )
-
-    mc1163.link(
             mc1165,
-            file('versions/mapping-1.16.3-1.16.5.txt')
+            file('versions/mapping-1.15.2-1.16.5.txt')
     )
 
     mc1165.link(
@@ -120,28 +91,13 @@ preprocess {
     )
 
     mc1171.link(
-            mc118,
-            file('versions/mapping-1.17.1-1.18.txt')
-    )
-
-    mc118.link(
             mc1182,
-            file('versions/mapping-1.18-1.18.2.txt')
+            file('versions/mapping-1.17.1-1.18.2.txt')
     )
 
     mc1182.link(
-            mc1192,
-            file('versions/mapping-1.18.2-1.19.2.txt')
-    )
-
-    mc1192.link(
-            mc1193,
-            file('versions/mapping-1.19.2-1.19.3.txt')
-    )
-
-    mc1193.link(
             mc1194,
-            file('versions/mapping-1.19.3-1.19.4.txt')
+            file('versions/mapping-1.18.2-1.19.4.txt')
     )
 
     mc1194.link(
@@ -401,7 +357,7 @@ tasks.register('buildAndGather') {
         def gatheredNames = []
 
         /*
-         * Gather in the same newest -> oldest order used by settings.json.
+         * Gather in the same newest -> oldest order used by activeVersions.
          */
         supportedVersions.each { version ->
             def p = project(":${version}")

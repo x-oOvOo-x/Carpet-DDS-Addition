@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.mixin.integration.inventoryprofilesnext;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpetddsaddition.integration.gca.fakeplayer.client.DdsFakePlayerEnderChestScreen;
 //$$ import org.anti_ad.mc.ipn.api.IPNButton;
 //$$ import org.anti_ad.mc.ipn.api.IPNGuiHint;

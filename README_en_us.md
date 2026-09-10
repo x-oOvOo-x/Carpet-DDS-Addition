@@ -3,15 +3,11 @@
 [![license](https://img.shields.io/github/license/x-oOvOo-x/Carpet-DDS-Addition?style=flat-square)](LICENSE)
 [![issues](https://img.shields.io/github/issues/x-oOvOo-x/Carpet-DDS-Addition?style=flat-square)](https://github.com/x-oOvOo-x/Carpet-DDS-Addition/issues)
 [![build](https://github.com/x-oOvOo-x/Carpet-DDS-Addition/actions/workflows/build.yml/badge.svg)](https://github.com/x-oOvOo-x/Carpet-DDS-Addition/actions/workflows/build.yml)
-![Minecraft](https://img.shields.io/badge/Minecraft-1.14.4--26.2-orange?style=flat-square)
+![Minecraft](https://img.shields.io/badge/Minecraft-20_active_targets-orange?style=flat-square)
 
 [中文](README.md) | **English**
 
-A [Carpet mod](https://github.com/gnembon/fabric-carpet) extension for technical survival, providing gameplay, renewable-resource, quality-of-life, and optimization-oriented rules across multiple Minecraft versions.
-
-The default configuration does not change vanilla gameplay mechanics: gameplay rules are disabled by default, while `ddsNetworkProtocol` is enabled only for optional client capability negotiation. Players without the DDS client can still connect normally.
-
-Use it together with a compatible version of Fabric Carpet.
+A server-side [Carpet mod](https://github.com/gnembon/fabric-carpet) extension for technical survival, providing gameplay, renewable-resource, quality-of-life, and optimization-oriented rules across multiple Minecraft versions.
 
 ## Documentation
 
@@ -20,11 +16,13 @@ Use it together with a compatible version of Fabric Carpet.
 
 ## Supported Minecraft Versions
 
-Carpet DDS Addition uses a multi-version source and build structure.
+Carpet DDS Addition uses a multi-version source/build structure.
 
-Supported build targets currently cover Minecraft **1.14.4 through 26.2**, including:
+There are currently 20 active build and release targets:
 
-`1.14.4` · `1.15.x` · `1.16.x` · `1.17.x` · `1.18.x` · `1.19.x` · `1.20.x` · `1.21.x` · `26.1.x` · `26.2`
+`1.14.4` · `1.15.2` · `1.16.5` · `1.17.1` · `1.18.2` · `1.19.4` · `1.20.1` · `1.20.2` · `1.20.4` · `1.20.6` · `1.21.1` · `1.21.3` · `1.21.4` · `1.21.5` · `1.21.8` · `1.21.9` · `1.21.10` · `1.21.11` · `26.1.2` · `26.2`
+
+Minecraft versions that reach EOL no longer receive routine feature or compatibility maintenance. Existing historical releases remain available. 
 
 Some rules require newer Minecraft versions. See the [rule documentation](docs/rules.md) for rule-specific minimum versions.
 

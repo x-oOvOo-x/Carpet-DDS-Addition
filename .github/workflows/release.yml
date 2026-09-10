@@ -8,16 +8,105 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  release:
-    if: github.repository == 'x-oOvOo-x/Carpet-DDS-Addition'
-    runs-on: ubuntu-latest
+  release-self-hosted:
+    if: ${{ github.repository == 'x-oOvOo-x/Carpet-DDS-Addition' && vars.RUNNER_MODE == 'self-hosted' }}
+    runs-on: [self-hosted, Windows, X64]
     env:
       MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
       MODRINTH_PROJECT_SLUG: ${{ vars.MODRINTH_PROJECT_SLUG }}
       CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
       CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
 
+      - name: Check self-hosted environment
+        shell: cmd
+        run: |
+          echo JAVA_HOME=%JAVA_HOME%
+          where java
+          where javac
+          where py
+          where gh
+          java -version
+          javac -version
+          py -3 --version
+          gh --version
+          gradlew.bat --version
+
+      - name: Validate release version
+        shell: cmd
+        run: >-
+          powershell -NoProfile -ExecutionPolicy Bypass -Command
+          "$mod=(Get-Content gradle.properties | Where-Object { $_ -match '^mod_version=' } | Select-Object -First 1) -replace '^mod_version=','';
+          if ([string]::IsNullOrWhiteSpace($mod)) { throw 'mod_version was not found in gradle.properties' };
+          $expected='v'+$mod;
+          if ($env:GITHUB_REF_NAME -ne $expected) { throw ('Tag '+$env:GITHUB_REF_NAME+' does not match mod_version='+$mod+'; expected '+$expected) };
+          $notes='docs/release-notes/'+$env:GITHUB_REF_NAME+'.md';
+          if (-not (Test-Path $notes)) { throw ('Release notes not found: '+$notes) };
+          ('MOD_VERSION='+$mod) | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append;
+          ('RELEASE_NOTES='+$notes) | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+
+      - name: Verify preprocessor round-trip
+        shell: cmd
+        run: py -3 scripts/verify-preprocessor-roundtrip.py --skip-build
+
+      - name: Audit release Mixins
+        shell: cmd
+        run: gradlew.bat :1.21.11:runMixinAudit :1.21.11:runMixinAuditClient :26.2:runMixinAudit :26.2:runMixinAuditClient --stacktrace --no-parallel
+
+      - name: Verify and build every Minecraft target
+        shell: cmd
+        run: gradlew.bat buildAndGather --stacktrace --no-parallel
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: cmd
+        run: |
+          gh release view "%GITHUB_REF_NAME%" >nul 2>&1
+          if errorlevel 1 (
+            gh release create "%GITHUB_REF_NAME%" --verify-tag --title "Carpet DDS Addition %MOD_VERSION%" --notes-file "%RELEASE_NOTES%"
+          ) else (
+            gh release edit "%GITHUB_REF_NAME%" --title "Carpet DDS Addition %MOD_VERSION%" --notes-file "%RELEASE_NOTES%"
+          )
+          if errorlevel 1 exit /b 1
+          dir /b build\releases\*.jar >nul 2>&1 || exit /b 1
+          for %%F in (build\releases\*.jar) do gh release upload "%GITHUB_REF_NAME%" "%%F" --clobber || exit /b 1
+
+      - name: Publish versions to Modrinth
+        if: ${{ env.MODRINTH_TOKEN != '' && env.MODRINTH_PROJECT_SLUG != '' }}
+        shell: cmd
+        run: py -3 scripts/publish-modrinth.py --project "%MODRINTH_PROJECT_SLUG%" --version "%MOD_VERSION%" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "%RELEASE_NOTES%"
+
+      - name: Skip Modrinth publishing
+        if: ${{ env.MODRINTH_TOKEN == '' || env.MODRINTH_PROJECT_SLUG == '' }}
+        shell: cmd
+        run: echo Skipping Modrinth because its token/project is not configured.
+
+      - name: Publish versions to CurseForge
+        if: ${{ always() && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
+        shell: cmd
+        run: py -3 scripts/publish-curseforge.py --project "%CURSEFORGE_PROJECT_ID%" --version "%MOD_VERSION%" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "%RELEASE_NOTES%"
+
+      - name: Skip CurseForge publishing
+        if: ${{ always() && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
+        shell: cmd
+        run: echo Skipping CurseForge because its token/project is not configured.
+
+  release-cloud:
+    if: ${{ github.repository == 'x-oOvOo-x/Carpet-DDS-Addition' && vars.RUNNER_MODE == 'cloud' }}
+    runs-on: windows-latest
+    env:
+      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+      MODRINTH_PROJECT_SLUG: ${{ vars.MODRINTH_PROJECT_SLUG }}
+      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+      CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
     steps:
       - name: Check out tagged source
         uses: actions/checkout@v4
@@ -32,6 +121,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Ensure Gradle wrapper is executable
+        shell: bash
         run: chmod +x gradlew
 
       - name: Validate release version
@@ -39,31 +129,24 @@ jobs:
         run: |
           set -euo pipefail
           MOD_VERSION="$(sed -n 's/^mod_version=//p' gradle.properties | tr -d '\r')"
-          if [[ -z "$MOD_VERSION" ]]; then
-            echo "mod_version was not found in gradle.properties"
-            exit 1
-          fi
+          [[ -n "$MOD_VERSION" ]] || { echo "mod_version was not found in gradle.properties"; exit 1; }
           EXPECTED_TAG="v${MOD_VERSION}"
-          if [[ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]]; then
-            echo "Tag ${GITHUB_REF_NAME} does not match mod_version=${MOD_VERSION}"
-            echo "Expected tag: ${EXPECTED_TAG}"
-            exit 1
-          fi
+          [[ "${GITHUB_REF_NAME}" == "${EXPECTED_TAG}" ]] || { echo "Tag ${GITHUB_REF_NAME} does not match ${EXPECTED_TAG}"; exit 1; }
           RELEASE_NOTES="docs/release-notes/${GITHUB_REF_NAME}.md"
-          if [[ ! -f "${RELEASE_NOTES}" ]]; then
-            echo "Release notes not found: ${RELEASE_NOTES}"
-            exit 1
-          fi
+          [[ -f "${RELEASE_NOTES}" ]] || { echo "Release notes not found: ${RELEASE_NOTES}"; exit 1; }
           echo "MOD_VERSION=${MOD_VERSION}" >> "$GITHUB_ENV"
           echo "RELEASE_NOTES=${RELEASE_NOTES}" >> "$GITHUB_ENV"
 
       - name: Verify preprocessor round-trip
+        shell: bash
         run: python3 scripts/verify-preprocessor-roundtrip.py --skip-build
 
       - name: Audit release Mixins
+        shell: bash
         run: ./gradlew :1.21.11:runMixinAudit :1.21.11:runMixinAuditClient :26.2:runMixinAudit :26.2:runMixinAuditClient --stacktrace --no-parallel
 
       - name: Verify and build every Minecraft target
+        shell: bash
         run: ./gradlew buildAndGather --stacktrace --no-parallel
 
       - name: Create or update GitHub Release
@@ -73,41 +156,28 @@ jobs:
         run: |
           set -euo pipefail
           if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release create "${GITHUB_REF_NAME}" \
-              --verify-tag \
-              --title "Carpet DDS Addition ${MOD_VERSION}" \
-              --notes-file "${RELEASE_NOTES}"
+            gh release create "${GITHUB_REF_NAME}" --verify-tag --title "Carpet DDS Addition ${MOD_VERSION}" --notes-file "${RELEASE_NOTES}"
           else
-            gh release edit "${GITHUB_REF_NAME}" \
-              --title "Carpet DDS Addition ${MOD_VERSION}" \
-              --notes-file "${RELEASE_NOTES}"
+            gh release edit "${GITHUB_REF_NAME}" --title "Carpet DDS Addition ${MOD_VERSION}" --notes-file "${RELEASE_NOTES}"
           fi
           gh release upload "${GITHUB_REF_NAME}" build/releases/*.jar --clobber
 
       - name: Publish versions to Modrinth
         if: ${{ env.MODRINTH_TOKEN != '' && env.MODRINTH_PROJECT_SLUG != '' }}
-        run: |
-          python3 scripts/publish-modrinth.py \
-            --project "${MODRINTH_PROJECT_SLUG}" \
-            --version "${MOD_VERSION}" \
-            --release-dir build/releases \
-            --config scripts/modrinth-versions.json \
-            --changelog-file "${RELEASE_NOTES}"
+        shell: bash
+        run: python3 scripts/publish-modrinth.py --project "${MODRINTH_PROJECT_SLUG}" --version "${MOD_VERSION}" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "${RELEASE_NOTES}"
 
       - name: Skip Modrinth publishing
         if: ${{ env.MODRINTH_TOKEN == '' || env.MODRINTH_PROJECT_SLUG == '' }}
+        shell: bash
         run: echo "Skipping Modrinth because its token/project is not configured."
 
       - name: Publish versions to CurseForge
         if: ${{ always() && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
-        run: |
-          python3 scripts/publish-curseforge.py \
-            --project "${CURSEFORGE_PROJECT_ID}" \
-            --version "${MOD_VERSION}" \
-            --release-dir build/releases \
-            --config scripts/modrinth-versions.json \
-            --changelog-file "${RELEASE_NOTES}"
+        shell: bash
+        run: python3 scripts/publish-curseforge.py --project "${CURSEFORGE_PROJECT_ID}" --version "${MOD_VERSION}" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "${RELEASE_NOTES}"
 
       - name: Skip CurseForge publishing
         if: ${{ always() && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
+        shell: bash
         run: echo "Skipping CurseForge because its token/project is not configured."

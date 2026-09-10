@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer.client;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpetddsaddition.CarpetDDSAddition;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerAction;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerActions;
@@ -194,10 +194,8 @@ package carpetddsaddition.integration.gca.fakeplayer.client;
 //$$         InventoryScreen.extractEntityInInventoryFollowsMouse(graphics, leftPos + 26, topPos + 8, leftPos + 75, topPos + 78, 30, 0.0625F, mouseX, mouseY, target);
 //#elseif MC >= 12002
 //$$         InventoryScreen.renderEntityInInventoryFollowsMouse(graphics, leftPos + 26, topPos + 8, leftPos + 75, topPos + 78, 30, 0.0625F, mouseX, mouseY, target);
-//#elseif MC >= 11904
-//$$         InventoryScreen.renderEntityInInventoryFollowsMouse(graphics, leftPos + 51, topPos + 75, 30, (float) (leftPos + 51 - mouseX), (float) (topPos + 30 - mouseY), target);
 //#else
-//$$         InventoryScreen.renderEntityInInventory(leftPos + 51, topPos + 75, 30, (float) (leftPos + 51 - mouseX), (float) (topPos + 30 - mouseY), target);
+//$$         InventoryScreen.renderEntityInInventoryFollowsMouse(graphics, leftPos + 51, topPos + 75, 30, (float) (leftPos + 51 - mouseX), (float) (topPos + 30 - mouseY), target);
 //#endif
 //$$     }
 //$$

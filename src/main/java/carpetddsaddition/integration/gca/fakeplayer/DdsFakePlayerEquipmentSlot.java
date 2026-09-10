@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import net.minecraft.world.Container;
 //$$ import net.minecraft.world.entity.EquipmentSlot;
 //$$ import net.minecraft.world.entity.LivingEntity;

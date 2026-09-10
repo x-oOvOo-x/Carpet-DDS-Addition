@@ -21,6 +21,22 @@ Sneak-right-clicking does not trigger this rule and keeps the vanilla ice placem
 
 ---
 
+## Candle Free Placement (candleFreePlacement)
+
+Treats candles like ordinary blocks for placement and survival, so they no longer require a valid supporting block below.
+
+Clicking the top, side, or bottom face of a block continues to use vanilla block-placement targeting and places the candle into the corresponding adjacent valid space.
+
+Candles keep their normal upright form, stacking, lighting, extinguishing, and other vanilla behavior.
+
+- Type: `boolean`
+- Default: `false`
+- Suggested options: `true`, `false`
+- Supported versions: `1.17+`
+- Categories: `feature`, `survival`
+
+---
+
 ## No Normal Campfire Damage (noCampfireDamage)
 
 Prevents lit normal campfires from damaging living entities.
@@ -58,7 +74,7 @@ Adult piglin item pickup behavior is unaffected, and vanilla bartering remains u
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.16.1+`
+- Supported versions: `1.16.4+`
 - Categories: `feature`, `survival`
 
 ---
@@ -78,50 +94,50 @@ Redstone-powered state handling and all other vanilla behavior remain unchanged.
 
 ## Natural Passive Spawning Control (naturalPassiveSpawning)
 
-Controls natural spawning for different groups of passive mobs.
-
-The value can be set to `all`, `none`, or a comma-separated combination of allowed spawning groups.
+Prevents selected groups of passive mobs from spawning naturally. The rule is a blacklist: every group added to the String value is blocked, while groups not listed keep vanilla spawning behavior.
 
 Available groups:
 
 - `land`: land passive mobs
 - `fish`: fish
-- `squid`: squid
+- `squid`: squid and glow squid where applicable
 - `axolotl`: axolotls
 - `bat`: bats
 - `dolphin`: dolphins
 
-When `land` is disabled, initial land-creature spawning in newly generated chunks is also disabled.
+`none` disables no groups and therefore keeps vanilla passive spawning. `all` blocks every group listed above. Multiple groups can be combined with commas.
+
+Selecting `land` also blocks the initial creature spawning pass in newly generated chunks.
 
 Examples:
-
-```text
-/carpet naturalPassiveSpawning all
-```
-
-Allows all controlled passive mobs to spawn naturally.
 
 ```text
 /carpet naturalPassiveSpawning none
 ```
 
-Disables all controlled passive mob natural spawning.
+Keeps all controlled passive spawning vanilla.
+
+```text
+/carpet naturalPassiveSpawning all
+```
+
+Blocks all controlled passive mob natural spawning.
 
 ```text
 /carpet naturalPassiveSpawning land,fish
 ```
 
-Allows only land passive mobs and fish to spawn naturally.
+Blocks land passive mobs and fish while leaving the other controlled groups unchanged.
 
 ```text
 /carpet naturalPassiveSpawning squid,dolphin
 ```
 
-Allows only squid and dolphins to spawn naturally.
+Blocks squid and dolphins while leaving the other controlled groups unchanged.
 
 - Type: `String`
-- Default: `all`
-- Suggested options: `all`, `none`, `land`, `fish`, `squid`, `axolotl`, `bat`, `dolphin`
+- Default: `none`
+- Suggested options: `none`, `all`, `land`, `fish`, `squid`, `axolotl`, `bat`, `dolphin`
 - Categories: `optimization`, `survival`
 
 ---
@@ -418,6 +434,30 @@ Players must be close enough for the vault to become active before inserting a k
 
 ---
 
+## Crafter Recipe Lock (crafterRecipeLock)
+
+Allows individual Crafters to preserve a physical recipe template while automated crafting consumes only surplus ingredients.
+
+Use honeycomb on a Crafter containing a valid recipe to lock it. One honeycomb is consumed unless the player is in Creative mode. Locking plays the vanilla wax-on feedback and, on Minecraft 1.21+, the Vault shutter-closing sound.
+
+While locked, each recipe slot present when the lock was applied reserves its final item. If any reserved slot has only one item remaining, that crafting attempt is blocked. The Crafter otherwise uses vanilla crafting logic, including recipe remainders and output behavior.
+
+Use an axe on a locked Crafter to remove the lock. The axe loses one durability unless the player is in Creative mode and vanilla wax-off feedback is played.
+
+Unlocked Crafters remain completely vanilla, so universal crafting machines that feed exactly one recipe at a time are unaffected.
+
+Hoppers and manual inventory operations remain vanilla and may remove reserved items.
+
+Comparator output keeps the Crafter's vanilla 0–9 slot-count semantics. On a locked Crafter, a reserved template slot containing only its final item is treated as empty for comparator output; disabled slots continue to count normally.
+
+- Type: `boolean`
+- Default: `false`
+- Suggested options: `true`, `false`
+- Supported versions: `1.20.4+`
+- Categories: `feature`, `survival`
+
+---
+
 ## DDS Network Protocol (ddsNetworkProtocol)
 
 Controls the optional DDS client-server network protocol.
@@ -576,7 +616,7 @@ DDS Quick Container Access can operate on the real fake-player inventory and End
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.19.2–26.2`
+- Supported versions: `1.19.4–26.2`
 - Categories: `feature`, `survival`
 
 ---
@@ -645,25 +685,46 @@ If Camera mode is already active, the current spectating target is switched dire
 
 The player's state is checked before Camera mode can be entered.
 
-The player must:
+By default the player must:
 
 - Be alive;
 - Be in Survival mode;
 - Be on the ground;
 - Not be in a suffocating or air-depleted state;
-- Not be on fire.
+- Not be on fire;
+- Not be riding a vehicle or mount.
 
-If the required conditions are not satisfied, Camera mode is not entered.
+Enabling `noCameraSurvivalRestrictions` removes only the ground, full-air and not-on-fire requirements. The player must still be alive, in Survival mode, and not mounted.
 
 ### State Protection
 
-The player's original position, dimension, and relevant state are saved when Camera mode is entered.
+Entering Camera immediately writes an immutable world-owned Session v2 snapshot containing the original game mode, dimension, position, view, motion, fall distance, Elytra flight state and flight ticks, air supply (including negative drowning counters), remaining fire ticks, and powder-snow frozen ticks. Legacy v1 sessions remain readable.
 
-When Camera mode is exited, the player is first returned to the originally saved position and is then restored to Survival mode.
+Potion/status effects, health, hunger, experience, inventory, pose, item-use progress, and vehicle state are not snapshotted or rolled back. Status effects continue ticking normally while Camera is active.
 
-This prevents spectator movement from being used to permanently relocate a Survival-mode player.
+`/c back` and void auto-return are Camera-only recovery paths: they stop follow, keep Spectator, clear current spectator velocity, and never restore or rewrite the Survival snapshot. If the saved Y is below the dimension floor, only this Camera return uses `minBuildHeight + 1`; the immutable original Y is unchanged.
 
-If the player disconnects or the Camera session becomes invalid, recovery behavior prioritizes restoring the player's state instead of leaving the player in an invalid spectator session.
+Only an explicit `/c` exit restores the exact original dimension, position, view, motion, and saved Survival state. Minecraft playerdata is force-saved before the DDS Session is deleted. Any failed restore or commit keeps the Session retryable and reasserts Spectator state on a later tick/login.
+
+Disconnecting, stopping the server, exiting or crashing the client, switching servers, death/respawn, and external game-mode changes do not delete the Session. This prevents spectator movement from permanently relocating a Survival player while preserving recovery after abnormal exits.
+
+- Type: `boolean`
+- Default: `false`
+- Suggested options: `true`, `false`
+- Supported versions: `1.16.5–26.2`
+- Categories: `feature`, `survival`
+
+---
+
+## No Camera Survival Restrictions (noCameraSurvivalRestrictions)
+
+Keeps `commandCamera` itself unchanged while optionally removing its environmental entry restrictions.
+
+When this rule is `false`, Camera entry keeps the existing safety checks: the Survival player must be on the ground, have full air, and not be on fire.
+
+When this rule is `true`, a living Survival player may enter `/c` while airborne, flying or falling, underwater, on fire, or falling into the void before death. The alive, Survival-mode, and not-mounted checks still apply.
+
+This rule does not alter Camera session persistence, the immutable saved origin, `/c back`, follow state, disconnect/server-restart behavior, or the explicit `/c` exit flow. Existing Camera sessions continue to persist exactly as before.
 
 - Type: `boolean`
 - Default: `false`
@@ -874,3 +935,49 @@ Experience-orb pickup sounds play periodically during continuous repair, and the
 - Default: `false`
 - Suggested options: `true`, `false`
 - Categories: `feature`, `survival`
+
+### Crafter Recipe Lock
+
+`crafterRecipeLock`
+
+Allows an individual Crafter with a valid recipe to be locked using honeycomb. Locked recipe slots preserve their final template item, and the lock can be removed with an axe.
+
+While locked:
+- the Crafter cannot consume the final reserved item in each template slot;
+- hopper extraction and manual inventory interaction remain vanilla;
+- comparator output ignores template slots containing only their reserved item;
+- a lock indicator is displayed on both side faces of the Crafter;
+- unlock the Crafter before changing its recipe.
+
+Default: `false`
+
+---
+
+## Easy Mining (easyMining)
+
+Multiplies selected blocks' vanilla mining progress by **20** while preserving block hardness, tool requirements, drops, enchantments, status effects and the block-breaking flow. Unbreakable blocks remain unbreakable.
+
+- Type: `String`
+- Default: `false`
+- Suggested options: `false`, `obsidian`, `crying_obsidian`, `deepslate`, `ores`, `all`
+- Categories: `feature`, `survival`
+
+| Mode | Affected blocks |
+| --- | --- |
+| `false` | Disabled; use alone |
+| `obsidian` | Obsidian only |
+| `crying_obsidian` | Crying obsidian (1.16+) |
+| `deepslate` | Deepslate and the eight deepslate ore blocks (1.17+) |
+| `ores` | Vanilla coal, iron, copper, gold, redstone, emerald, lapis and diamond ores, their deepslate variants, nether gold ore and nether quartz ore, where available |
+| `all` | All blocks with positive vanilla mining progress |
+
+Combine modes with commas, for example:
+
+```mcfunction
+/carpet easyMining obsidian,crying_obsidian,deepslate,ores
+/carpet easyMining false
+```
+
+Modes take effect immediately. Unavailable blocks on older versions are ignored. Duplicate modes are harmless; surrounding whitespace is ignored. Use lowercase names. Unknown names, empty entries (including a trailing comma), and combinations containing `false` disable acceleration for the entire value.
+
+`deepslate` does not include cobbled/polished deepslate or deepslate building blocks. `ores` does not include ancient debris, raw ore blocks or modded ores. Those blocks can still be affected by `all`.

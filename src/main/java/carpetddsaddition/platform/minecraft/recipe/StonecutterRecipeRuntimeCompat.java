@@ -23,15 +23,18 @@ import net.minecraft.world.item.crafting.Recipe;
 //#endif
 import java.util.List;
 
-/** Shared Minecraft-version boundary for replacing stonecutter recipes and synchronizing clients. */
+/** Shared Minecraft-version boundary for replacing stonecutter recipes. */
 public final class StonecutterRecipeRuntimeCompat {
     private StonecutterRecipeRuntimeCompat(){}
+
+    //#if MC >= 12103
+    //$$ public static void replaceLoadedRecipes(RecipeManager manager,List<RecipeHolder<?>> recipes){((RecipeManagerBridge)(Object)manager).carpetDDSAddition$setRecipes(RecipeMap.create(recipes));}
+    //#endif
 
     //#if MC >= 12002
     //$$ public static void replace(MinecraftServer server,RecipeManager manager,List<RecipeHolder<?>> recipes){
     //#if MC >= 12103
-    //$$     ((RecipeManagerBridge)(Object)manager).carpetDDSAddition$setRecipes(RecipeMap.create(recipes));
-    //$$     manager.finalizeRecipeLoading(server.getWorldData().enabledFeatures());
+    //$$     replaceLoadedRecipes(manager,recipes); manager.finalizeRecipeLoading(server.getWorldData().enabledFeatures());
     //#else
     //$$     manager.replaceRecipes(recipes);
     //#endif
@@ -44,8 +47,7 @@ public final class StonecutterRecipeRuntimeCompat {
     private static void syncPlayers(MinecraftServer server){
         if(server==null||server.getPlayerList()==null||server.getPlayerList().getPlayers().isEmpty())return;
         //#if MC >= 12103
-        //$$ RecipeManager manager=server.getRecipeManager();
-        //$$ ClientboundUpdateRecipesPacket packet=new ClientboundUpdateRecipesPacket(manager.getSynchronizedItemProperties(),manager.getSynchronizedStonecutterRecipes());
+        //$$ RecipeManager manager=server.getRecipeManager(); ClientboundUpdateRecipesPacket packet=new ClientboundUpdateRecipesPacket(manager.getSynchronizedItemProperties(),manager.getSynchronizedStonecutterRecipes());
         //$$ for(ServerPlayer player:server.getPlayerList().getPlayers()){player.connection.send(packet); if(player.containerMenu instanceof StonecutterMenu)player.closeContainer();}
         //#else
         server.getPlayerList().reloadResources();

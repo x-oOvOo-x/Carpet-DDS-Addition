@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.mixin.integration.inventoryprofilesnext;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
 //$$ import carpetddsaddition.integration.gca.fakeplayer.client.DdsFakePlayerScreen;
 //$$ import carpetddsaddition.integration.gca.fakeplayer.client.ipn.DdsIpnCompat;
 //$$ import org.spongepowered.asm.mixin.Mixin;

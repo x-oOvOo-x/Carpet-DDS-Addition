@@ -7,6 +7,7 @@
 package carpetddsaddition.feature.naturalpassivespawning.compat;
 
 import carpetddsaddition.feature.naturalpassivespawning.NaturalPassiveSpawning;
+import carpetddsaddition.feature.naturalpassivespawning.NaturalPassiveSpawning.Group;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 //#if MC >= 260200
@@ -16,29 +17,30 @@ import net.minecraft.world.entity.MobCategory;
 public final class NaturalPassiveSpawningCompat {
     private NaturalPassiveSpawningCompat() {}
 
-    /** True when a whole category can be skipped before spawn-position search. */
+    /** True when every DDS group represented by this vanilla category is blocked. */
     public static boolean shouldSkipCategory(MobCategory category) {
-        if (category == MobCategory.CREATURE) return !NaturalPassiveSpawning.land();
-        if (category == MobCategory.AMBIENT) return !NaturalPassiveSpawning.bat();
+        if (category == MobCategory.CREATURE) return NaturalPassiveSpawning.prevents(Group.LAND);
+        if (category == MobCategory.AMBIENT) return NaturalPassiveSpawning.prevents(Group.BAT);
         //#if MC >= 11800
-        //$$ if (category == MobCategory.AXOLOTLS) return !NaturalPassiveSpawning.axolotl();
+        //$$ if (category == MobCategory.AXOLOTLS) return NaturalPassiveSpawning.prevents(Group.AXOLOTL);
         //#endif
         //#if MC >= 11700
         //$$ if (category == MobCategory.UNDERGROUND_WATER_CREATURE) {
         //#if MC >= 11800
-        //$$     return !NaturalPassiveSpawning.squid();
+        //$$     return NaturalPassiveSpawning.prevents(Group.SQUID);
         //#else
-        //$$     return !NaturalPassiveSpawning.squid() && !NaturalPassiveSpawning.axolotl();
+        //$$     return NaturalPassiveSpawning.prevents(Group.SQUID) && NaturalPassiveSpawning.prevents(Group.AXOLOTL);
         //#endif
         //$$ }
         //#endif
         //#if MC >= 11601
-        //$$ if (category == MobCategory.WATER_AMBIENT) return !NaturalPassiveSpawning.fish();
+        //$$ if (category == MobCategory.WATER_AMBIENT) return NaturalPassiveSpawning.prevents(Group.FISH);
         //$$ if (category == MobCategory.WATER_CREATURE)
-        //$$     return !NaturalPassiveSpawning.squid() && !NaturalPassiveSpawning.dolphin();
+        //$$     return NaturalPassiveSpawning.prevents(Group.SQUID) && NaturalPassiveSpawning.prevents(Group.DOLPHIN);
         //#else
         if (category == MobCategory.WATER_CREATURE)
-            return !NaturalPassiveSpawning.fish() && !NaturalPassiveSpawning.squid() && !NaturalPassiveSpawning.dolphin();
+            return NaturalPassiveSpawning.prevents(Group.FISH) && NaturalPassiveSpawning.prevents(Group.SQUID)
+                    && NaturalPassiveSpawning.prevents(Group.DOLPHIN);
         //#endif
         return false;
     }
@@ -46,22 +48,22 @@ public final class NaturalPassiveSpawningCompat {
     /** Fine-grained filtering where multiple DDS groups share one vanilla category. */
     public static boolean allowsEntityType(EntityType<?> type) {
         //#if MC >= 260200
-        //$$ if (type == EntityTypes.SQUID) return NaturalPassiveSpawning.squid();
-        //$$ if (type == EntityTypes.DOLPHIN) return NaturalPassiveSpawning.dolphin();
+        //$$ if (type == EntityTypes.SQUID) return !NaturalPassiveSpawning.prevents(Group.SQUID);
+        //$$ if (type == EntityTypes.DOLPHIN) return !NaturalPassiveSpawning.prevents(Group.DOLPHIN);
         //$$ if (type == EntityTypes.COD || type == EntityTypes.SALMON || type == EntityTypes.PUFFERFISH
-        //$$         || type == EntityTypes.TROPICAL_FISH) return NaturalPassiveSpawning.fish();
-        //$$ if (type == EntityTypes.BAT) return NaturalPassiveSpawning.bat();
-        //$$ if (type == EntityTypes.GLOW_SQUID) return NaturalPassiveSpawning.squid();
-        //$$ if (type == EntityTypes.AXOLOTL) return NaturalPassiveSpawning.axolotl();
+        //$$         || type == EntityTypes.TROPICAL_FISH) return !NaturalPassiveSpawning.prevents(Group.FISH);
+        //$$ if (type == EntityTypes.BAT) return !NaturalPassiveSpawning.prevents(Group.BAT);
+        //$$ if (type == EntityTypes.GLOW_SQUID) return !NaturalPassiveSpawning.prevents(Group.SQUID);
+        //$$ if (type == EntityTypes.AXOLOTL) return !NaturalPassiveSpawning.prevents(Group.AXOLOTL);
         //#else
-        if (type == EntityType.SQUID) return NaturalPassiveSpawning.squid();
-        if (type == EntityType.DOLPHIN) return NaturalPassiveSpawning.dolphin();
+        if (type == EntityType.SQUID) return !NaturalPassiveSpawning.prevents(Group.SQUID);
+        if (type == EntityType.DOLPHIN) return !NaturalPassiveSpawning.prevents(Group.DOLPHIN);
         if (type == EntityType.COD || type == EntityType.SALMON || type == EntityType.PUFFERFISH
-                || type == EntityType.TROPICAL_FISH) return NaturalPassiveSpawning.fish();
-        if (type == EntityType.BAT) return NaturalPassiveSpawning.bat();
+                || type == EntityType.TROPICAL_FISH) return !NaturalPassiveSpawning.prevents(Group.FISH);
+        if (type == EntityType.BAT) return !NaturalPassiveSpawning.prevents(Group.BAT);
         //#if MC >= 11700
-        //$$ if (type == EntityType.GLOW_SQUID) return NaturalPassiveSpawning.squid();
-        //$$ if (type == EntityType.AXOLOTL) return NaturalPassiveSpawning.axolotl();
+        //$$ if (type == EntityType.GLOW_SQUID) return !NaturalPassiveSpawning.prevents(Group.SQUID);
+        //$$ if (type == EntityType.AXOLOTL) return !NaturalPassiveSpawning.prevents(Group.AXOLOTL);
         //#endif
         //#endif
         return true;

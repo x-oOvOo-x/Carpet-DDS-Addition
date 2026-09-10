@@ -6,14 +6,10 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11904 && MC <= 260200
+//$$ import carpet.fakes.ServerPlayerInterface;
 //$$ import carpet.helpers.EntityPlayerActionPack;
 //$$ import carpet.patches.EntityPlayerMPFake;
-//#if MC >= 11904
-//$$ import carpet.fakes.ServerPlayerInterface;
-//#else
-//$$ import carpet.fakes.ServerPlayerEntityInterface;
-//#endif
 //#if MC >= 12005
 //$$ import net.minecraft.core.component.DataComponents;
 //#endif
@@ -29,13 +25,7 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$ final class DdsFakePlayerCarpetCompat {
 //$$     private DdsFakePlayerCarpetCompat() {}
 //$$
-//$$     static EntityPlayerActionPack actionPack(ServerPlayer player) {
-//#if MC >= 11904
-//$$         return ((ServerPlayerInterface) player).getActionPack();
-//#else
-//$$         return ((ServerPlayerEntityInterface) player).getActionPack();
-//#endif
-//$$     }
+//$$     static EntityPlayerActionPack actionPack(ServerPlayer player) { return ((ServerPlayerInterface) player).getActionPack(); }
 //$$
 //$$     static int selectedHotbarSlot(ServerPlayer player) {
 //#if MC >= 12105

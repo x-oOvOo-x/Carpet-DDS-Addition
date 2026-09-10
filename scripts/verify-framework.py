@@ -4,7 +4,7 @@ import subprocess,sys
 
 ROOT=Path(__file__).resolve().parents[1]
 JAVA=ROOT/'src/main/java/carpetddsaddition'
-for rel in ('scripts/verify-framework-core.py','scripts/verify-rule-docs.py'):
+for rel in ('scripts/verify-framework-core.py','scripts/verify-active-versions.py','scripts/verify-rule-docs.py'):
     code=subprocess.run([sys.executable,str(ROOT/rel)]).returncode
     if code: raise SystemExit(code)
 
