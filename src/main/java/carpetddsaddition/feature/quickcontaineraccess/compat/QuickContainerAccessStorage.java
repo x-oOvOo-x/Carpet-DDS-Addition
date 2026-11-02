@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.feature.quickcontaineraccess.compat;
 
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 import net.minecraft.core.NonNullList;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -28,7 +28,7 @@ import net.minecraft.world.ContainerHelper;
 final class QuickContainerAccessStorage {
     private QuickContainerAccessStorage() {}
 
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     static boolean handleStorageInteraction(ServerPlayer player, ServerPlayer owner, AbstractContainerMenu menu,
                                             int slotId, int button, Object clickType) {
         if (!"PICKUP".equals(QuickContainerAccessSession.enumName(clickType)) || button != 1
@@ -42,21 +42,32 @@ final class QuickContainerAccessStorage {
             if (carried.getCount() != 1 || target.getCount() != 1) return false;
             if (QuickContainerAccessSession.isLeasedByOther(player, carried)
                     || QuickContainerAccessSession.isLeasedByOther(player, target)) return true;
-            StorageHandle source = storageFor(owner, carried), destination = storageFor(owner, target);
+            StorageHandle source = storageFor(player, player, menu, carried);
+            StorageHandle destination = storageFor(player, owner, menu, target);
             if (source == null || destination == null) return true;
             if (carried != target) transfer(source, destination);
             return true;
         }
 
-        StorageHandle carriedStorage = storageFor(owner, carried), targetStorage = storageFor(owner, target);
+        ServerPlayer carriedOwner = player;
+        //#if MC >= 11404 && MC <= 260300
+        // Stacked Ender blocks are ordinary items, not an active QCA storage host.
+        // Only a singleton Ender may request cursor-origin authorization.
+        if (QuickContainerAccessItems.isStorageHostCandidate(carried)
+                && QuickContainerAccessItems.isItem(carried, Items.ENDER_CHEST)) {
+            carriedOwner = QuickContainerAccessCarriedEnderOrigins.resolve(player, menu, carried);
+            if (carriedOwner == null) return true; // Never silently write to the viewer's Ender.
+        }
+        //#endif
+        StorageHandle carriedStorage = storageFor(player, carriedOwner, menu, carried);
+        StorageHandle targetStorage = storageFor(player, owner, menu, target);
         if (carriedStorage != null && QuickContainerAccessSession.isLeasedByOther(player, carried)) return true;
         if (targetStorage != null && QuickContainerAccessSession.isLeasedByOther(player, target)) return true;
         if (carriedStorage != null) {
             if (target.isEmpty()) {
-                ItemStack extracted = extractLast(carriedStorage);
-                if (extracted.isEmpty()) return true;
-                if (!slot.mayPlace(extracted)) { insert(carriedStorage, extracted); return true; }
-                slot.set(extracted); slot.setChanged(); return true;
+                ItemStack extracted = extractLast(carriedStorage, slot);
+                if (!extracted.isEmpty()) { slot.set(extracted); slot.setChanged(); }
+                return true;
             }
             int before = target.getCount(); insert(carriedStorage, target);
             if (target.getCount() != before) { if (target.isEmpty()) slot.set(ItemStack.EMPTY); slot.setChanged(); }
@@ -78,7 +89,7 @@ final class QuickContainerAccessStorage {
         ItemStack carried = QuickContainerAccessSession.carried(menu, player);
         if (carried.isEmpty() || carried.getCount() != 1 || !QuickContainerAccessItems.isShulker(carried)) return false;
         if (QuickContainerAccessSession.isLeasedByOther(player, carried)) return true;
-        StorageHandle source = storageFor(active.inventoryOwner, carried);
+        StorageHandle source = storageFor(player, player, menu, carried);
         Container opened = active.path.openedContainer;
         if (source == null || !source.shulker || opened == null || opened.getContainerSize() != active.openedSize) return true;
         transfer(source, new StorageHandle(opened, true));
@@ -88,16 +99,20 @@ final class QuickContainerAccessStorage {
     static Container createPortableShulkerContainer(ItemStack source, int size) {
         return hasStoredItemsBeyond(source, size) ? null : new PortableShulkerContainer(source, size);
     }
-    static int shulkerSize() { return QuickContainerAccessAmsCompat.largeShulkerBoxEnabled() ? 54 : 27; }
+    static int shulkerSize() { return QuickContainerAccessAmsCompat.shulkerSize(); }
 
-    private static StorageHandle storageFor(ServerPlayer owner, ItemStack host) {
+    private static StorageHandle storageFor(ServerPlayer viewer, ServerPlayer owner,
+                                            AbstractContainerMenu menu, ItemStack host) {
         if (owner == null || host.isEmpty() || host.getCount() != 1) return null;
         if (QuickContainerAccessItems.isShulker(host)) {
             int size = shulkerSize();
-            if (hasStoredItemsBeyond(host, size)) return null;
+            if (size != 27 && size != 54 || hasStoredItemsBeyond(host, size)) return null;
             return new StorageHandle(new PortableShulkerContainer(host, size), true);
         }
-        if (QuickContainerAccessItems.isItem(host, Items.ENDER_CHEST)) return new StorageHandle(owner.getEnderChestInventory(), false);
+        if (QuickContainerAccessItems.isItem(host, Items.ENDER_CHEST)) {
+            int size = QuickContainerAccessSession.authorizedStorageEnderSize(viewer, menu, owner);
+            return size > 0 ? new StorageHandle(owner.getEnderChestInventory(), false, size) : null;
+        }
         return null;
     }
     private static boolean hasStoredItemsBeyond(ItemStack source, int size) {
@@ -114,7 +129,7 @@ final class QuickContainerAccessStorage {
     }
     private static void transfer(StorageHandle source, StorageHandle target) {
         int moved = 0;
-        for (int i = 0; i < source.container.getContainerSize(); i++) {
+        for (int i = 0; i < source.size; i++) {
             ItemStack stack = source.container.getItem(i); if (stack.isEmpty()) continue;
             moved += insert(target, stack); if (stack.isEmpty()) source.container.setItem(i, ItemStack.EMPTY);
         }
@@ -123,13 +138,13 @@ final class QuickContainerAccessStorage {
     private static int insert(StorageHandle storage, ItemStack source) {
         if (source.isEmpty() || storage.shulker && QuickContainerAccessItems.isShulker(source)) return 0;
         Container container = storage.container; int initial = source.getCount();
-        for (int i = 0; i < container.getContainerSize() && !source.isEmpty(); i++) {
+        for (int i = 0; i < storage.size && !source.isEmpty(); i++) {
             ItemStack existing = container.getItem(i);
             if (existing.isEmpty() || !container.canPlaceItem(i, source) || !QuickContainerAccessItems.sameItemAndData(existing, source)) continue;
             int limit = Math.min(container.getMaxStackSize(), existing.getMaxStackSize()), move = Math.min(source.getCount(), limit - existing.getCount());
             if (move > 0) { existing.grow(move); source.shrink(move); }
         }
-        for (int i = 0; i < container.getContainerSize() && !source.isEmpty(); i++) {
+        for (int i = 0; i < storage.size && !source.isEmpty(); i++) {
             if (!container.getItem(i).isEmpty() || !container.canPlaceItem(i, source)) continue;
             int move = Math.min(source.getCount(), Math.min(container.getMaxStackSize(), source.getMaxStackSize()));
             container.setItem(i, copyWithCountCompat(source, move)); source.shrink(move);
@@ -144,18 +159,33 @@ final class QuickContainerAccessStorage {
         ItemStack copy = source.copy(); copy.setCount(count); return copy;
         //#endif
     }
-    private static ItemStack extractLast(StorageHandle storage) {
+    private static ItemStack extractLast(StorageHandle storage, Slot target) {
         Container container = storage.container;
-        for (int i = container.getContainerSize() - 1; i >= 0; i--) {
+        for (int i = storage.size - 1; i >= 0; i--) {
             ItemStack stack = container.getItem(i); if (stack.isEmpty()) continue;
-            container.setItem(i, ItemStack.EMPTY); container.setChanged(); return stack;
+            if (!target.mayPlace(stack)) return ItemStack.EMPTY;
+            int amount = Math.min(stack.getCount(), Math.min(stack.getMaxStackSize(), target.getMaxStackSize(stack)));
+            if (amount <= 0) return ItemStack.EMPTY;
+            ItemStack extracted = stack.split(amount);
+            if (stack.isEmpty()) container.setItem(i, ItemStack.EMPTY);
+            container.setChanged();
+            return extracted;
         }
         return ItemStack.EMPTY;
     }
 
     private static final class StorageHandle {
-        private final Container container; private final boolean shulker;
-        private StorageHandle(Container container, boolean shulker) { this.container = container; this.shulker = shulker; }
+        private final Container container;
+        private final boolean shulker;
+        private final int size;
+        private StorageHandle(Container container, boolean shulker) {
+            this(container, shulker, container.getContainerSize());
+        }
+        private StorageHandle(Container container, boolean shulker, int size) {
+            this.container = container;
+            this.shulker = shulker;
+            this.size = Math.min(size, container.getContainerSize());
+        }
     }
 
     private static final class PortableShulkerContainer extends SimpleContainer {

@@ -12,5 +12,6 @@ import net.minecraft.server.MinecraftServer;
 public interface DdsLifecycleComponent {
     default void onServerLoaded(MinecraftServer server) {}
     default void onReload(MinecraftServer server) {}
+    default void onTick(MinecraftServer server) {}
     default void onServerClosed(MinecraftServer server) {}
 }

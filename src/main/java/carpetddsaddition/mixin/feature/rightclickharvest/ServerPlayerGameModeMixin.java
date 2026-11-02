@@ -13,6 +13,9 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+//#if MC >= 260300
+//$$ import net.minecraft.world.item.component.SwingAnimation;
+//#endif
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import org.spongepowered.asm.mixin.Mixin;
@@ -33,7 +36,9 @@ public abstract class ServerPlayerGameModeMixin {
             CallbackInfoReturnable<InteractionResult> cir) {
         if (!RightClickHarvestCompat.tryHarvest(player, level, hitResult.getBlockPos(), stack)) return;
         // Server-side harvest needs an explicit swing; 1.14 only has the one-argument overload.
-        //#if MC >= 11500
+        //#if MC >= 260300
+        //$$ player.swing(hand, SwingAnimation.DEFAULT, true);
+        //#elseif MC >= 11500
         player.swing(hand, true);
         //#else
         //$$ player.swing(hand);

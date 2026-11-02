@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 //#if MC >= 12002
@@ -67,7 +67,7 @@ public final class DdsProtocol {
         return result.isEmpty() ? Collections.emptySet() : result;
     }
 
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     //#if MC >= 12111
     //$$ public static final Identifier CHANNEL = Identifier.fromNamespaceAndPath(CarpetDDSAddition.MOD_ID, "network/v1");
     //#elseif MC >= 12101

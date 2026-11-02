@@ -16,72 +16,38 @@ import net.minecraft.server.level.ServerPlayer;
 
 /** DDS feature packet registry and routing metadata. */
 public final class DdsPacketRegistry {
-    private static final Map<String, C2SPacket> C2S = new LinkedHashMap<>();
-    private static final Set<String> S2C = new LinkedHashSet<>();
-    private static Set<String> localC2S = Collections.emptySet(), localS2C = Collections.emptySet();
+    private static final Map<String,C2SPacket>C2S=new LinkedHashMap<>();
+    private static final Set<String>S2C=new LinkedHashSet<>(),CLIENT_C2S=new LinkedHashSet<>(),CLIENT_S2C=new LinkedHashSet<>();
+    private static Set<String> localC2S=Collections.emptySet(),localS2C=Collections.emptySet(),clientC2S=Collections.emptySet(),clientS2C=Collections.emptySet();
     private static boolean frozen;
-    private DdsPacketRegistry() {}
+    private DdsPacketRegistry(){}
 
-    public static synchronized void registerC2S(String packetId, C2SHandler handler,
-                                                 boolean requireClientAdvertisement, boolean allowDisabledGrace) {
-        validatePacketId(packetId);
-        if (handler == null) throw new IllegalArgumentException("Invalid DDS C2S handler for: " + packetId);
-        ensureMutable();
-        C2SPacket previous = C2S.putIfAbsent(packetId,
-                new C2SPacket(packetId, handler, requireClientAdvertisement, allowDisabledGrace));
-        if (previous != null) throw new IllegalStateException("Duplicate DDS C2S packet id: " + packetId);
-        localC2S = Collections.unmodifiableSet(new LinkedHashSet<>(C2S.keySet()));
+    public static synchronized void registerC2S(String id,C2SHandler handler,boolean requireClientAdvertisement,boolean allowDisabledGrace){registerC2S(id,handler,requireClientAdvertisement,allowDisabledGrace,true,null);}
+    public static synchronized void registerC2S(String id,C2SHandler handler,boolean requireClientAdvertisement,boolean allowDisabledGrace,boolean clientImplemented){registerC2S(id,handler,requireClientAdvertisement,allowDisabledGrace,clientImplemented,null);}
+    public static synchronized void registerC2S(String id,C2SHandler handler,boolean requireClientAdvertisement,boolean allowDisabledGrace,boolean clientImplemented,C2SAvailability availability){
+        validatePacketId(id);if(handler==null)throw new IllegalArgumentException("Invalid DDS C2S handler for: "+id);ensureMutable();
+        C2SPacket previous=C2S.putIfAbsent(id,new C2SPacket(id,handler,requireClientAdvertisement,allowDisabledGrace,availability));if(previous!=null)throw new IllegalStateException("Duplicate DDS C2S packet id: "+id);
+        localC2S=immutable(C2S.keySet());if(clientImplemented){CLIENT_C2S.add(id);clientC2S=immutable(CLIENT_C2S);}
     }
-
-    public static synchronized void registerS2C(String packetId) {
-        validatePacketId(packetId);
-        ensureMutable();
-        if (!S2C.add(packetId)) throw new IllegalStateException("Duplicate DDS S2C packet id: " + packetId);
-        localS2C = Collections.unmodifiableSet(new LinkedHashSet<>(S2C));
+    public static synchronized void registerS2C(String id){registerS2C(id,true);}
+    public static synchronized void registerS2C(String id,boolean clientImplemented){
+        validatePacketId(id);ensureMutable();if(!S2C.add(id))throw new IllegalStateException("Duplicate DDS S2C packet id: "+id);
+        localS2C=immutable(S2C);if(clientImplemented){CLIENT_S2C.add(id);clientS2C=immutable(CLIENT_S2C);}
     }
+    public static synchronized void freeze(){frozen=true;}
+    private static void validatePacketId(String id){if(id==null||id.isEmpty()||!id.equals(id.trim())||id.indexOf(',')>=0)throw new IllegalArgumentException("Invalid DDS packet id: "+id);if(DdsProtocol.HELLO_C2S.equals(id)||DdsProtocol.HELLO_S2C.equals(id))throw new IllegalArgumentException("DDS HELLO ids are transport-reserved: "+id);}
+    private static void ensureMutable(){if(frozen)throw new IllegalStateException("DDS packet registry is frozen");}
+    private static Set<String> immutable(Set<String> values){return Collections.unmodifiableSet(new LinkedHashSet<>(values));}
+    static synchronized C2SPacket getC2S(String id){return C2S.get(id);}static synchronized boolean hasS2C(String id){return S2C.contains(id);}
+    public static synchronized Set<String> localC2SPackets(){return localC2S;}public static synchronized Set<String> localS2CPackets(){return localS2C;}
+    public static synchronized Set<String> clientC2SPackets(){return clientC2S;}public static synchronized Set<String> clientS2CPackets(){return clientS2C;}
+    public static synchronized Set<String> availableC2SPackets(ServerPlayer player){LinkedHashSet<String> out=new LinkedHashSet<>();for(C2SPacket packet:C2S.values())if(packet.available(player))out.add(packet.packetId());return Collections.unmodifiableSet(out);}
 
-    /** Permanently closes Protocol v1 feature registration for this process. */
-    public static synchronized void freeze() { frozen = true; }
-
-    private static void validatePacketId(String packetId) {
-        // Protocol v1 advertises packet ids as a comma-delimited string.
-        if (packetId == null || packetId.isEmpty() || !packetId.equals(packetId.trim()) || packetId.indexOf(',') >= 0)
-            throw new IllegalArgumentException("Invalid DDS packet id: " + packetId);
-        if (DdsProtocol.HELLO_C2S.equals(packetId) || DdsProtocol.HELLO_S2C.equals(packetId))
-            throw new IllegalArgumentException("DDS HELLO ids are transport-reserved: " + packetId);
-    }
-
-    private static void ensureMutable() {
-        if (frozen) throw new IllegalStateException("DDS packet registry is frozen");
-    }
-
-    static synchronized C2SPacket getC2S(String packetId) { return C2S.get(packetId); }
-    static synchronized boolean hasS2C(String packetId) { return S2C.contains(packetId); }
-
-    /** Local C2S feature capabilities in deterministic registration order. */
-    public static synchronized Set<String> localC2SPackets() { return localC2S; }
-
-    /** Local S2C feature capabilities in deterministic registration order. */
-    public static synchronized Set<String> localS2CPackets() { return localS2C; }
-
-    @FunctionalInterface
-    public interface C2SHandler { void handle(ServerPlayer player, CompoundTag data); }
-
-    static final class C2SPacket {
-        private final String packetId;
-        private final C2SHandler handler;
-        private final boolean requireClientAdvertisement, allowDisabledGrace;
-
-        private C2SPacket(String packetId, C2SHandler handler, boolean requireClientAdvertisement, boolean allowDisabledGrace) {
-            this.packetId = packetId;
-            this.handler = handler;
-            this.requireClientAdvertisement = requireClientAdvertisement;
-            this.allowDisabledGrace = allowDisabledGrace;
-        }
-
-        String packetId() { return packetId; }
-        boolean requireClientAdvertisement() { return requireClientAdvertisement; }
-        boolean allowDisabledGrace() { return allowDisabledGrace; }
-        void handle(ServerPlayer player, CompoundTag data) { handler.handle(player, data); }
+    @FunctionalInterface public interface C2SHandler{void handle(ServerPlayer player,CompoundTag data);}
+    @FunctionalInterface public interface C2SAvailability{boolean available(ServerPlayer player);}
+    static final class C2SPacket{
+        private final String packetId;private final C2SHandler handler;private final boolean requireClientAdvertisement,allowDisabledGrace;private final C2SAvailability availability;
+        private C2SPacket(String id,C2SHandler handler,boolean requireClientAdvertisement,boolean allowDisabledGrace,C2SAvailability availability){packetId=id;this.handler=handler;this.requireClientAdvertisement=requireClientAdvertisement;this.allowDisabledGrace=allowDisabledGrace;this.availability=availability;}
+        String packetId(){return packetId;}boolean requireClientAdvertisement(){return requireClientAdvertisement;}boolean allowDisabledGrace(){return allowDisabledGrace;}boolean hasAvailabilityPredicate(){return availability!=null;}boolean available(ServerPlayer player){return availability==null||availability.available(player);}void handle(ServerPlayer player,CompoundTag data){handler.handle(player,data);}
     }
 }

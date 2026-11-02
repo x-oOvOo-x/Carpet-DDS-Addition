@@ -8,7 +8,7 @@ package carpetddsaddition.feature.quickcontaineraccess.compat;
 
 import carpetddsaddition.feature.quickcontaineraccess.QuickContainerAccess;
 
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 //#if MC >= 11903
 //$$ import net.minecraft.core.Holder;
 //#endif
@@ -22,7 +22,7 @@ import net.minecraft.sounds.SoundSource;
 final class QuickContainerAccessSounds {
     private QuickContainerAccessSounds() {}
 
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     static void sendOpen(ServerPlayer player, QuickContainerAccessItems.MenuKind kind) {
         if (kind == QuickContainerAccessItems.MenuKind.SHULKER) { if (!QuickContainerAccess.soundsDisabled()) send(player, SoundEvents.SHULKER_BOX_OPEN, 0.5F, 1.0F); }
         else if (kind == QuickContainerAccessItems.MenuKind.ENDER_CHEST) send(player, SoundEvents.ENDER_CHEST_OPEN, 0.5F, 1.0F);

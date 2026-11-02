@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.Mixin;
 //#if MC <= 11605
 import carpetddsaddition.network.ServerboundCustomPayloadPacketAccess;
 //#endif
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 import carpetddsaddition.generated.DDSRules;
 import carpetddsaddition.network.DdsProtocol;
 import carpetddsaddition.network.DdsServerNetwork;
@@ -36,7 +36,7 @@ import net.minecraft.network.protocol.game.ServerboundCustomPayloadPacket;
         //#endif
 )
 public abstract class ServerCustomPayloadMixin {
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     @Inject(
             method =
             //#if MC >= 12002

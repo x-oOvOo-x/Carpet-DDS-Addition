@@ -7,7 +7,10 @@
 package carpetddsaddition.feature.quickcontaineraccess.compat;
 
 import net.minecraft.world.entity.player.Player;
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
+import carpetddsaddition.core.inventory.DdsCanonicalSlotMapping;
+import carpetddsaddition.core.inventory.DdsCarriedScratchSwap;
+import carpetddsaddition.core.inventory.DdsDirectSlotAccess;
 import carpetddsaddition.core.inventory.DdsEnderMenuFactory;
 import carpetddsaddition.core.inventory.DdsInventoryOwnerView;
 //#if MC >= 12005
@@ -26,6 +29,11 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.ChestMenu;
+//#if MC >= 260102
+//$$ import net.minecraft.world.inventory.ContainerInput;
+//#else
+import net.minecraft.world.inventory.ClickType;
+//#endif
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.EnchantmentMenu;
@@ -48,7 +56,7 @@ import net.minecraft.world.inventory.CartographyTableMenu;
 final class QuickContainerAccessMenuFactory {
     private QuickContainerAccessMenuFactory() {}
 
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     static AbstractContainerMenu create(int containerId, Inventory inventory, ServerPlayer viewer, ServerPlayer owner,
                                         ItemStack source, QuickContainerAccessItems.MenuKind kind, int openedSize,
                                         DdsEnderMenuFactory enderMenuFactory) {
@@ -90,11 +98,10 @@ final class QuickContainerAccessMenuFactory {
     }
     private static AbstractContainerMenu createEnderChestMenu(int containerId, Inventory inventory, ServerPlayer owner, int openedSize) {
         Container canonical = owner.getEnderChestInventory();
-        if (canonical.getContainerSize() != openedSize) return null;
-        Container portable = new PortableEnderContainer(owner, canonical);
-        if (openedSize == 54) return ChestMenu.sixRows(containerId, inventory, portable);
-        if (openedSize == 27) return ChestMenu.threeRows(containerId, inventory, portable);
-        return null;
+        if ((openedSize != 27 && openedSize != 54) || canonical.getContainerSize() < openedSize) return null;
+        Container portable = new PortableEnderContainer(owner, canonical, openedSize);
+        if (openedSize == 54) return new PortableEnderMenu(MenuType.GENERIC_9x6, containerId, inventory, portable, 6);
+        return new PortableEnderMenu(MenuType.GENERIC_9x3, containerId, inventory, portable, 3);
     }
 
     private static ContainerLevelAccess createLevelAccess(ServerPlayer player) {
@@ -157,25 +164,78 @@ final class QuickContainerAccessMenuFactory {
         return source.getHoverName();
     }
 
-    private static final class PortableEnderContainer implements Container, DdsInventoryOwnerView {
-        private final ServerPlayer owner; private final Container delegate;
-        private PortableEnderContainer(ServerPlayer owner, Container delegate) { this.owner = owner; this.delegate = delegate; }
-        @Override public int getContainerSize() { return delegate.getContainerSize(); }
-        @Override public boolean isEmpty() { return delegate.isEmpty(); }
-        @Override public ItemStack getItem(int slot) { return delegate.getItem(slot); }
-        @Override public ItemStack removeItem(int slot, int count) { return delegate.removeItem(slot, count); }
-        @Override public ItemStack removeItemNoUpdate(int slot) { return delegate.removeItemNoUpdate(slot); }
-        @Override public void setItem(int slot, ItemStack stack) { delegate.setItem(slot, stack); }
+    private static final class PortableEnderContainer implements Container, DdsInventoryOwnerView, DdsDirectSlotAccess, DdsCanonicalSlotMapping {
+        private final ServerPlayer owner;
+        private final Container delegate;
+        private final int visibleSize;
+
+        private PortableEnderContainer(ServerPlayer owner, Container delegate, int visibleSize) {
+            this.owner = owner;
+            this.delegate = delegate;
+            this.visibleSize = visibleSize;
+        }
+
+        @Override public int getContainerSize() { return visibleSize; }
+        @Override public boolean isEmpty() {
+            for (int i = 0; i < visibleSize; i++) if (!delegate.getItem(i).isEmpty()) return false;
+            return true;
+        }
+        @Override public ItemStack getItem(int slot) { return valid(slot) ? delegate.getItem(slot) : ItemStack.EMPTY; }
+        @Override public ItemStack removeItem(int slot, int count) { return valid(slot) ? delegate.removeItem(slot, count) : ItemStack.EMPTY; }
+        @Override public ItemStack removeItemNoUpdate(int slot) { return valid(slot) ? delegate.removeItemNoUpdate(slot) : ItemStack.EMPTY; }
+        @Override public void setItem(int slot, ItemStack stack) { if (valid(slot)) delegate.setItem(slot, stack); }
         @Override public int getMaxStackSize() { return delegate.getMaxStackSize(); }
         //#if MC >= 12006
         //$$ @Override public int getMaxStackSize(ItemStack stack) { return delegate.getMaxStackSize(stack); }
         //#endif
         @Override public void setChanged() { delegate.setChanged(); }
         @Override public boolean stillValid(Player player) { return true; }
-        @Override public boolean canPlaceItem(int slot, ItemStack stack) { return delegate.canPlaceItem(slot, stack); }
-        @Override public void clearContent() { delegate.clearContent(); }
+        @Override public boolean canPlaceItem(int slot, ItemStack stack) { return valid(slot) && delegate.canPlaceItem(slot, stack); }
+        @Override public void clearContent() {
+            for (int i = 0; i < visibleSize; i++) delegate.setItem(i, ItemStack.EMPTY);
+            delegate.setChanged();
+        }
         @Override public ServerPlayer ddsInventoryOwner() { return owner; }
         @Override public Container ddsCanonicalContainer() { return delegate; }
+        @Override public boolean ddsAllowsDirectSlotAccess(int slot) { return valid(slot); }
+        @Override public int ddsCanonicalSlot(int providerSlot) { return valid(providerSlot) ? providerSlot : -1; }
+        private boolean valid(int slot) { return slot >= 0 && slot < visibleSize; }
+    }
+
+    /**
+     * Canonical provider Ender menus keep vanilla slot ids but reserve SWAP button 9 as an exact
+     * carried-stack scratch operation used by inventory automation. Both sides must implement the
+     * same operation; otherwise IPN predicts a sorted frame and the server immediately restores it.
+     */
+    private static final class PortableEnderMenu extends ChestMenu implements DdsCarriedScratchSwap {
+        private static final int SORT_SCRATCH_BUTTON=9;
+        private final int storageSize;
+        private PortableEnderMenu(MenuType<?> type,int id,Inventory inventory,Container container,int rows) {
+            super(type,id,inventory,container,rows);storageSize=rows*9;
+        }
+        //#if MC >= 260102
+        //$$ @Override public void clicked(int slotId,int button,ContainerInput type,Player player){
+        //$$     if(type==ContainerInput.SWAP&&button==SORT_SCRATCH_BUTTON){swapWithCarried(slotId,player);return;}
+        //$$     super.clicked(slotId,button,type,player);
+        //$$ }
+        //#elseif MC >= 11700
+        //$$ @Override public void clicked(int slotId,int button,ClickType type,Player player){
+        //$$     if(type==ClickType.SWAP&&button==SORT_SCRATCH_BUTTON){swapWithCarried(slotId,player);return;}
+        //$$     super.clicked(slotId,button,type,player);
+        //$$ }
+        //#else
+        @Override public ItemStack clicked(int slotId,int button,ClickType type,Player player){
+            if(type==ClickType.SWAP&&button==SORT_SCRATCH_BUTTON){swapWithCarried(slotId,player);return ItemStack.EMPTY;}
+            return super.clicked(slotId,button,type,player);
+        }
+        //#endif
+        private void swapWithCarried(int slotId,Player player){
+            if(slotId<0||slotId>=storageSize)return;
+            Slot slot=getSlot(slotId);ItemStack slotStack=slot.getItem(),carried=QuickContainerAccessSession.carried(this,player);
+            if(!slot.mayPickup(player)||!carried.isEmpty()&&!slot.mayPlace(carried))return;
+            slot.set(carried);QuickContainerAccessSession.setCarried(this,player,slotStack);
+        }
+        @Override public boolean stillValid(Player player){return true;}
     }
 
     private static final class PortableLargeShulkerMenu extends ChestMenu {

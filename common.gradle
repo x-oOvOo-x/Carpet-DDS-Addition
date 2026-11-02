@@ -1,4 +1,30 @@
+import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+
+final def ddsClientOwnershipContract = new JsonSlurper().parseText(
+        rootProject.file('config/dds-client-ownership-contract.json').getText('UTF-8')
+)
+final Map<String, ?> ownershipTargetsByVersion =
+        ddsClientOwnershipContract.targets.collectEntries { target ->
+            [(target.minecraft.toString()): target]
+        }
+final Set<String> productionHandoffVersions =
+        ddsClientOwnershipContract.targets.findAll { target ->
+            target.ddsStatus == 'active'
+                    && target.ddsPublishesTweakOwnership == true
+        }.collect { target ->
+            target.minecraft.toString()
+        } as Set
+
+final Set<String> logicalClientMixins = [] as Set
+
+final def ownershipTarget = ownershipTargetsByVersion[project.minecraft_version]
+final boolean logicalClientHandedOff =
+        productionHandoffVersions.contains(project.minecraft_version)
+final String handoffWireMode =
+        logicalClientHandedOff
+                ? ownershipTarget?.wireMode?.toString()
+                : null
 
 final int mcVersion = project.mcVersion
 final boolean unobfuscated = mcVersion >= 26_00_00
@@ -39,6 +65,9 @@ dependencies {
         mappings loom.officialMojangMappings()
     }
     add(runtimeModConfiguration, "net.fabricmc:fabric-loader:${project.loader_version}")
+
+    // Fabric Loader >= 0.17.0 already provides MixinExtras with @WrapMethod.
+    // Per-target minimum Loader versions are declared in versions/*/gradle.properties.
     if (mcVersion >= 1_19_02) {
         add('compileOnly', 'org.anti-ad.mc:inventory-profiles-next:fabric-1.17.1-1.1.0') { transitive = false }
     }
@@ -121,33 +150,28 @@ final def gameJavaLauncher =
 // Rule definitions are source-of-truth JSON. The generator keeps old/new Carpet
 // annotation differences out of business code, so future rules are added once.
 def generatedRuleDir = layout.buildDirectory.dir('generated/sources/ddsRules/java').get().asFile
+def generatedRuleResourceDir = layout.buildDirectory.dir('generated/resources/ddsRules').get().asFile
 def ruleSpecFile = rootProject.file('src/main/rules/rules.json')
 
 tasks.register('generateDDSRules') {
     inputs.file(ruleSpecFile)
     inputs.property('rule_api', project.rule_api)
     outputs.dir(generatedRuleDir)
+    outputs.dir(generatedRuleResourceDir)
 
     doLast {
         delete generatedRuleDir
+        delete generatedRuleResourceDir
 
         def spec = new JsonSlurper().parse(ruleSpecFile)
 
         def isRuleActive = { rule ->
-            int minMc = rule.containsKey('minMc')
-                    ? (rule.minMc as int)
-                    : Integer.MIN_VALUE
-
-            int maxMc = rule.containsKey('maxMc')
-                    ? (rule.maxMc as int)
-                    : Integer.MAX_VALUE
-
-            return mcVersion >= minMc && mcVersion <= maxMc
+            int minMc = rule.containsKey('minMc') ? (rule.minMc as int) : Integer.MIN_VALUE
+            int maxMc = rule.containsKey('maxMc') ? (rule.maxMc as int) : Integer.MAX_VALUE
+            mcVersion >= minMc && mcVersion <= maxMc
         }
 
-        def activeRules = spec.rules.findAll { rule ->
-            isRuleActive(rule)
-        }
+        def activeRules = spec.rules.findAll { rule -> isRuleActive(rule) }
 
         def javaLiteral = { rule ->
             switch (rule.type) {
@@ -155,37 +179,75 @@ tasks.register('generateDDSRules') {
                 case 'int':
                 case 'double':
                     return rule.default.toString()
-
                 case 'String':
                     return '"' + rule.default.toString()
                             .replace('\\', '\\\\')
                             .replace('"', '\\"') + '"'
-
                 default:
-                    throw new GradleException(
-                            "Unsupported DDS rule type: ${rule.type}"
-                    )
+                    throw new GradleException("Unsupported DDS rule type: ${rule.type}")
             }
         }
 
-        def pkgDir = new File(
-                generatedRuleDir,
-                'carpetddsaddition/generated'
-        )
+        def wrapperType = { rule ->
+            switch (rule.type) {
+                case 'boolean': return 'Boolean'
+                case 'int': return 'Integer'
+                case 'double': return 'Double'
+                case 'String': return 'String'
+                default: throw new GradleException("Unsupported DDS rule type: ${rule.type}")
+            }
+        }
+
+        def codecName = { rule ->
+            switch (rule.type) {
+                case 'boolean': return 'BOOLEAN'
+                case 'int': return 'INTEGER'
+                case 'double': return 'DOUBLE'
+                case 'String': return 'STRING'
+                default: throw new GradleException("Unsupported DDS rule type: ${rule.type}")
+            }
+        }
+
+        def constantName = { rule ->
+            rule.name.toString()
+                    .replaceAll(/([a-z0-9])([A-Z])/, '$1_$2')
+                    .toUpperCase(Locale.ROOT)
+        }
+
+        def quote = { value ->
+            '"' + value.toString()
+                    .replace('\\', '\\\\')
+                    .replace('"', '\\"') + '"'
+        }
+
+        def stringArray = { Collection<?> values ->
+            'new String[]{' + values.collect { quote(it) }.join(', ') + '}'
+        }
+
+        def categoriesFor = { rule ->
+            ['DDS'] + rule.categories.collect { it.toString() }
+        }
+
+        def suggestionsFor = { rule ->
+            if (rule.containsKey('suggestions')) {
+                return rule.suggestions.collect { it.toString() }
+            }
+            if (rule.type == 'boolean') return ['true', 'false']
+            return []
+        }
+
+        def strictFor = { rule ->
+            rule.containsKey('strict') ? (rule.strict as boolean) : true
+        }
+
+        def pkgDir = new File(generatedRuleDir, 'carpetddsaddition/generated')
         pkgDir.mkdirs()
 
-        /*
-         * Generate CarpetDDSAdditionSettings.java
-         */
         def f = new File(pkgDir, 'CarpetDDSAdditionSettings.java')
         def out = new StringBuilder()
-
         out << 'package carpetddsaddition.generated;\n\n'
 
-        if (project.rule_api == 'modern') {
-            out << 'import carpet.api.settings.Rule;\n'
-            out << 'import carpet.api.settings.RuleCategory;\n\n'
-        } else {
+        if (project.rule_api == 'legacy') {
             out << 'import carpet.settings.Rule;\n'
             out << 'import carpet.settings.RuleCategory;\n\n'
         }
@@ -194,49 +256,136 @@ tasks.register('generateDDSRules') {
         out << 'public final class CarpetDDSAdditionSettings {\n'
         out << '    private CarpetDDSAdditionSettings() {}\n\n'
 
-        activeRules.each { rule ->
-            def cats = (['"DDS"'] + rule.categories.collect {
-                'RuleCategory.' + it.toString().toUpperCase(Locale.ROOT)
-            }).join(', ')
-
-            if (project.rule_api == 'modern') {
-                out << '    @Rule(categories = {' + cats + '})\n'
-            } else {
+        if (project.rule_api == 'legacy') {
+            activeRules.each { rule ->
+                def cats = (['"DDS"'] + rule.categories.collect {
+                    'RuleCategory.' + it.toString().toUpperCase(Locale.ROOT)
+                }).join(', ')
                 def desc = rule.description.en_us.toString()
                         .replace('\\', '\\\\')
                         .replace('"', '\\"')
-
-                out << '    @Rule(desc = "' + desc + '", category = {' + cats + '})\n'
+                def options = suggestionsFor(rule)
+                def annotation = new StringBuilder()
+                annotation << '    @Rule(desc = "' + desc + '", category = {' + cats + '}'
+                if (!options.isEmpty() && rule.type != 'boolean') {
+                    annotation << ', options = {' + options.collect { quote(it) }.join(', ') + '}'
+                }
+                if (!strictFor(rule)) annotation << ', strict = false'
+                annotation << ')\n'
+                out << annotation
+                out << "    public static ${rule.type} ${rule.name} = ${javaLiteral(rule)};\n\n"
             }
-
-            def type = rule.type
-            def value = javaLiteral(rule)
-
-            out << "    public static ${type} ${rule.name} = ${value};\n\n"
         }
 
         out << '}\n'
         f.text = out.toString()
 
         /*
-         * Generate DDSRules.java
+         * RubixDev carpet-database discovers rule names by scanning an annotated
+         * settings class, then reads the real CarpetRule from the configured
+         * SettingsManager. Keep that extraction contract without reintroducing
+         * mutable modern static rule state.
+         */
+        def databaseHints = new File(pkgDir, 'DDSRuleDatabaseHints.java')
+        def hints = new StringBuilder()
+        hints << 'package carpetddsaddition.generated;\n\n'
+        if (project.rule_api == 'modern') {
+            hints << 'import carpet.api.settings.Rule;\n'
+            hints << 'import carpet.api.settings.RuleCategory;\n\n'
+        } else {
+            hints << 'import carpet.settings.Rule;\n'
+            hints << 'import carpet.settings.RuleCategory;\n\n'
+        }
+        hints << '/** Extraction-only hints for RubixDev carpet-database. Never parse this class at runtime. */\n'
+        hints << '@SuppressWarnings({"deprecation", "removal"})\n'
+        hints << 'public final class DDSRuleDatabaseHints {\n'
+        hints << '    private DDSRuleDatabaseHints() {}\n\n'
+
+        activeRules.each { rule ->
+            def cats = (['"DDS"'] + rule.categories.collect {
+                'RuleCategory.' + it.toString().toUpperCase(Locale.ROOT)
+            }).join(', ')
+            def options = suggestionsFor(rule)
+            def strict = strictFor(rule)
+
+            if (project.rule_api == 'modern') {
+                hints << '    @Rule(categories = {' + cats + '}'
+                if (!options.isEmpty() && rule.type != 'boolean') {
+                    hints << ', options = {' + options.collect { quote(it) }.join(', ') + '}'
+                }
+                if (!strict) hints << ', strict = false'
+                hints << ')\n'
+            } else {
+                def desc = rule.description.en_us.toString()
+                        .replace('\\', '\\\\')
+                        .replace('"', '\\"')
+                hints << '    @Rule(desc = "' + desc + '", category = {' + cats + '}'
+                if (!options.isEmpty() && rule.type != 'boolean') {
+                    hints << ', options = {' + options.collect { quote(it) }.join(', ') + '}'
+                }
+                if (!strict) hints << ', strict = false'
+                hints << ')\n'
+            }
+            hints << "    public static final ${rule.type} ${rule.name} = ${javaLiteral(rule)};\n\n"
+        }
+        hints << '}\n'
+        databaseHints.text = hints.toString()
+
+        /*
+         * DDSRules is the only generated API consumed by feature code.
+         * Modern targets use a DDS-owned store. Legacy targets bridge directly
+         * to Carpet's annotated static field so there is never a second mutable value.
          */
         def facade = new File(pkgDir, 'DDSRules.java')
         def api = new StringBuilder()
-
         api << 'package carpetddsaddition.generated;\n\n'
+        api << 'import carpetddsaddition.core.rules.DdsRule;\n'
+        api << 'import carpetddsaddition.core.rules.DdsRuleCodecs;\n'
+        api << 'import carpetddsaddition.core.rules.DdsRuleRegistry;\n\n'
         api << 'public final class DDSRules {\n'
+        api << '    private static final DdsRuleRegistry REGISTRY = new DdsRuleRegistry();\n'
         api << '    private DDSRules() {}\n\n'
 
         spec.rules.each { rule ->
-            api << "    public static ${rule.type} ${rule.name}() {\n"
+            def field = constantName(rule)
+            def boxed = wrapperType(rule)
+            def categories = stringArray(categoriesFor(rule))
+            def suggestions = stringArray(suggestionsFor(rule))
+            def strict = strictFor(rule)
+            def codec = 'DdsRuleCodecs.' + codecName(rule)
+            def factory
 
-            if (isRuleActive(rule)) {
-                api << "        return CarpetDDSAdditionSettings.${rule.name};\n"
+            if (!isRuleActive(rule)) {
+                factory = "DdsRule.unavailable(${quote(rule.name)}, ${boxed}.class, ${javaLiteral(rule)}, ${categories}, ${suggestions}, ${strict}, ${codec})"
+            } else if (project.rule_api == 'modern') {
+                factory = "DdsRule.owned(${quote(rule.name)}, ${boxed}.class, ${javaLiteral(rule)}, ${categories}, ${suggestions}, ${strict}, ${codec})"
             } else {
-                api << "        return ${javaLiteral(rule)};\n"
+                factory = "DdsRule.bridged(${quote(rule.name)}, ${boxed}.class, ${javaLiteral(rule)}, ${categories}, ${suggestions}, ${strict}, ${codec}, () -> CarpetDDSAdditionSettings.${rule.name}, value -> CarpetDDSAdditionSettings.${rule.name} = value)"
             }
 
+            api << "    public static final DdsRule<${boxed}> ${field} = REGISTRY.register(${factory});\n"
+        }
+
+        api << '\n    static { REGISTRY.freeze(); }\n\n'
+        api << '    public static DdsRuleRegistry registry() { return REGISTRY; }\n'
+        api << '    public static void captureCurrentState() {\n'
+        api << '        for (DdsRule<?> rule : REGISTRY.available()) rule.captureCurrentState();\n'
+        api << '    }\n\n'
+
+        spec.rules.each { rule ->
+            api << "    public static ${rule.type} ${rule.name}() {\n"
+            if (!isRuleActive(rule)) {
+                api << "        return ${javaLiteral(rule)};\n"
+            } else if (project.rule_api == 'legacy') {
+                /*
+                 * Preserve the historical primitive hot path. The typed
+                 * DdsRule handle is the control-plane identity, while the
+                 * legacy Carpet field is the one physical value store.
+                 */
+                api << "        return CarpetDDSAdditionSettings.${rule.name};\n"
+            } else {
+                api << "        return ${constantName(rule)}.value();\n"
+            }
             api << '    }\n\n'
         }
 
@@ -244,114 +393,109 @@ tasks.register('generateDDSRules') {
         facade.text = api.toString()
 
         /*
-         * Generate DDSRuleTranslations.java
-         *
-         * displayName.zh_cn -> carpet.rule.<rule>.name
-         * description.zh_cn -> carpet.rule.<rule>.desc
-         *
-         * en_us does not generate a .name entry, so Carpet keeps displaying
-         * the internal English rule identifier in English mode.
+         * Translations use the CDA SettingsManager identifier, not Carpet's
+         * global "carpet" namespace.
          */
         def translations = new File(pkgDir, 'DDSRuleTranslations.java')
         def tr = new StringBuilder()
-
         tr << 'package carpetddsaddition.generated;\n\n'
         tr << 'import java.util.HashMap;\n'
         tr << 'import java.util.Map;\n\n'
         tr << 'public final class DDSRuleTranslations {\n'
+        tr << '    private static final String PREFIX = "carpet-dds-addition.rule.";\n'
         tr << '    private DDSRuleTranslations() {}\n\n'
         tr << '    public static Map<String, String> forLanguage(String lang) {\n'
         tr << '        Map<String, String> values = new HashMap<>();\n'
 
-        /*
-         * Collect every language appearing in description or displayName.
-         */
         def languages = new LinkedHashSet<String>()
-
         activeRules.each { rule ->
-            languages.addAll(
-                    rule.description.keySet().collect { it.toString() }
-            )
-
+            languages.addAll(rule.description.keySet().collect { it.toString() })
             if (rule.containsKey('displayName')) {
-                languages.addAll(
-                        rule.displayName.keySet().collect { it.toString() }
-                )
+                languages.addAll(rule.displayName.keySet().collect { it.toString() })
             }
         }
-
-        /*
-         * English names remain the original Carpet rule IDs.
-         */
         languages.remove('en_us')
 
-        /*
-         * Generate non-English translations.
-         */
         languages.each { language ->
-            def escapedLanguage = language.toString()
-                    .replace('\\', '\\\\')
-                    .replace('"', '\\"')
-
-            tr << '        if ("' + escapedLanguage + '".equals(lang)) {\n'
-
+            tr << '        if (' + quote(language) + '.equals(lang)) {\n'
             activeRules.each { rule ->
-
-                /*
-                 * Translated rule display name.
-                 */
-                if (rule.containsKey('displayName')
-                        && rule.displayName.containsKey(language)) {
-
-                    def displayName = rule.displayName[language]
-                            .toString()
-                            .replace('\\', '\\\\')
-                            .replace('"', '\\"')
-
-                    tr << '            values.put("carpet.rule.' + rule.name + '.name", "' + displayName + '");\n'
+                if (rule.containsKey('displayName') && rule.displayName.containsKey(language)) {
+                    tr << '            values.put(PREFIX + "' + rule.name + '.name", ' + quote(rule.displayName[language]) + ');\n'
                 }
-
-                /*
-                 * Translated description.
-                 * Fall back to en_us if this language has no description.
-                 */
                 def rawDescription = rule.description.containsKey(language)
                         ? rule.description[language]
                         : rule.description.en_us
-
-                def description = rawDescription.toString()
-                        .replace('\\', '\\\\')
-                        .replace('"', '\\"')
-
-                tr << '            values.put("carpet.rule.' + rule.name + '.desc", "' + description + '");\n'
+                tr << '            values.put(PREFIX + "' + rule.name + '.desc", ' + quote(rawDescription) + ');\n'
             }
-
             tr << '            return values;\n'
             tr << '        }\n'
         }
 
-        /*
-         * Default / English descriptions.
-         *
-         * Do not generate .name here. Without an English name translation,
-         * Carpet displays the internal rule identifier such as petRegeneration.
-         */
         activeRules.each { rule ->
-            def description = rule.description.en_us.toString()
-                    .replace('\\', '\\\\')
-                    .replace('"', '\\"')
-
-            tr << '        values.put("carpet.rule.' + rule.name + '.desc", "' + description + '");\n'
+            tr << '        values.put(PREFIX + "' + rule.name + '.desc", ' + quote(rule.description.en_us) + ');\n'
         }
-
         tr << '        return values;\n'
         tr << '    }\n'
         tr << '}\n'
-
         translations.text = tr.toString()
+
+        /*
+         * Machine-readable rule ABI and carpet-database RawRule export. These
+         * are generated from the same source and packaged with every target JAR.
+         */
+        def metadataDir = new File(generatedRuleResourceDir, 'META-INF/dds')
+        metadataDir.mkdirs()
+
+        def manifestRules = activeRules.collect { rule ->
+            def entry = new LinkedHashMap<String, Object>()
+            entry.id = rule.name.toString()
+            entry.type = rule.type.toString()
+            entry.defaultValue = rule.default
+            entry.categories = categoriesFor(rule)
+            entry.suggestions = suggestionsFor(rule)
+            entry.strict = strictFor(rule)
+            if (rule.containsKey('minMc')) entry.minMc = rule.minMc
+            if (rule.containsKey('maxMc')) entry.maxMc = rule.maxMc
+            entry
+        }
+
+        def manifest = [
+                manager: 'carpet-dds-addition',
+                schema: 1,
+                minecraft: project.minecraft_version,
+                rules: manifestRules,
+        ]
+        new File(metadataDir, 'rules.json').text =
+                JsonOutput.prettyPrint(JsonOutput.toJson(manifest)) + '\n'
+
+        def carpetDatabaseRules = activeRules.collect { rule ->
+            def options = suggestionsFor(rule)
+            // Carpet only enforces strictness when the rule has options.
+            def effectiveStrict = strictFor(rule) && !options.isEmpty()
+            [
+                    name: rule.name.toString(),
+                    description: rule.description.en_us.toString(),
+                    type: rule.type.toString(),
+                    value: rule.default.toString(),
+                    strict: effectiveStrict,
+                    categories: categoriesFor(rule).collect {
+                        it.toString().toUpperCase(Locale.ROOT)
+                    },
+                    options: options,
+                    extras: [],
+                    validators: [],
+                    config_files: ['carpet-dds-addition'],
+            ]
+        }
+        new File(metadataDir, 'carpet-database-rules.json').text =
+                JsonOutput.prettyPrint(JsonOutput.toJson(carpetDatabaseRules)) + '\n'
     }
 }
 
+tasks.named('processResources').configure {
+    dependsOn 'generateDDSRules'
+    from(generatedRuleResourceDir)
+}
 tasks.named('compileJava', JavaCompile).configure {
     dependsOn 'generateDDSRules'
 
@@ -451,6 +595,18 @@ loom {
 
             ideConfigGenerated false
         }
+
+        protocolBaseline {
+            server()
+
+            runDir "../../run/protocol-baseline/${project.name}"
+
+            vmArgs(
+                    '-Dcarpetddsaddition.protocol_baseline=true'
+            )
+
+            ideConfigGenerated false
+        }
     }
 }
 
@@ -464,6 +620,7 @@ final List<String> gameRunTaskNames = [
         'runServer',
         'runMixinAudit',
         'runMixinAuditClient',
+        'runProtocolBaseline',
 ]
 
 tasks.withType(JavaExec).configureEach {
@@ -642,6 +799,7 @@ processResources {
     ]
 
     inputs.properties(props)
+    inputs.property('ddsOwnershipWireMode', handoffWireMode ?: '')
 
     filesMatching('fabric.mod.json') {
         expand(props)
@@ -650,8 +808,91 @@ processResources {
     filesMatching('carpet-dds-addition.mixins.json') {
         expand(props)
     }
+
+    doLast {
+        if (!logicalClientHandedOff) return
+        if (handoffWireMode == null) {
+            throw new GradleException(
+                    "Missing DDS wire mode for logical-client handoff target "
+                            + project.minecraft_version
+            )
+        }
+
+        def metadataFile = new File(destinationDir, 'fabric.mod.json')
+        def metadata = new JsonSlurper().parse(metadataFile)
+        if (!(metadata.custom instanceof Map)) metadata.custom = [:]
+        def ownershipMarker = [
+                contract            : 1,
+                logical_client_owner: 'tweak',
+                wire_mode           : handoffWireMode
+        ]
+        metadata.custom['dds:network_ownership'] = ownershipMarker
+        metadataFile.setText(
+                JsonOutput.prettyPrint(JsonOutput.toJson(metadata))
+                        + System.lineSeparator(),
+                'UTF-8'
+        )
+
+        def mixinFile = new File(destinationDir, 'carpet-dds-addition.mixins.json')
+        def mixinConfig = new JsonSlurper().parse(mixinFile)
+        mixinConfig.client = (mixinConfig.client ?: []).findAll {
+            !logicalClientMixins.contains(it)
+        }
+        mixinFile.setText(
+                JsonOutput.prettyPrint(JsonOutput.toJson(mixinConfig))
+                        + System.lineSeparator(),
+                'UTF-8'
+        )
+    }
 }
 
+def ruleArtifactTaskName = unobfuscated ? 'jar' : 'remapJar'
+
+tasks.register('verifyRuleArtifact') {
+    group = 'verification'
+    dependsOn tasks.named(ruleArtifactTaskName)
+
+    doLast {
+        def archiveTask = tasks.named(ruleArtifactTaskName).get()
+        File archive = archiveTask.archiveFile.get().asFile
+        def zip = new java.util.zip.ZipFile(archive)
+        try {
+            def manifestEntry = zip.getEntry('META-INF/dds/rules.json')
+            def databaseEntry = zip.getEntry('META-INF/dds/carpet-database-rules.json')
+            if (manifestEntry == null || databaseEntry == null) {
+                throw new GradleException("${project.path}: final JAR is missing DDS rule metadata")
+            }
+
+            def manifest
+            zip.getInputStream(manifestEntry).withCloseable { stream ->
+                manifest = new JsonSlurper().parse(stream)
+            }
+            if (manifest.manager != 'carpet-dds-addition') {
+                throw new GradleException("${project.path}: wrong DDS rule manager in final JAR: ${manifest.manager}")
+            }
+            if (manifest.minecraft.toString() != project.minecraft_version.toString()) {
+                throw new GradleException("${project.path}: rule manifest target ${manifest.minecraft} does not match ${project.minecraft_version}")
+            }
+
+            def spec = new JsonSlurper().parse(ruleSpecFile)
+            def expected = spec.rules.findAll { rule ->
+                int minMc = rule.containsKey('minMc') ? (rule.minMc as int) : Integer.MIN_VALUE
+                int maxMc = rule.containsKey('maxMc') ? (rule.maxMc as int) : Integer.MAX_VALUE
+                mcVersion >= minMc && mcVersion <= maxMc
+            }.collect { it.name.toString() } as Set
+            def packaged = manifest.rules.collect { it.id.toString() } as Set
+            if (packaged != expected) {
+                throw new GradleException("${project.path}: final JAR rule manifest does not match rules.json; expected=${expected}, packaged=${packaged}")
+            }
+        } finally {
+            zip.close()
+        }
+    }
+}
+
+tasks.named('build').configure {
+    dependsOn tasks.named('verifyRuleArtifact')
+}
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = Integer.parseInt(javaCompatibility.majorVersion)

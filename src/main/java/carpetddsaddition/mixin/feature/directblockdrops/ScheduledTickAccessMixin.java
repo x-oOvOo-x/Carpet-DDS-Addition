@@ -9,8 +9,8 @@ package carpetddsaddition.mixin.feature.directblockdrops;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 
-//#if MC >= 11800
-//$$ import carpetddsaddition.feature.directblockdrops.DirectDropContext;
+//#if MC >= 11800 && MC < 12109
+//$$ import carpetddsaddition.feature.directblockdrops.DirectDropAttribution;
 //$$ import carpetddsaddition.feature.directblockdrops.PendingDirectDropTicks;
 //$$ import net.minecraft.core.BlockPos;
 //$$ import net.minecraft.server.level.ServerLevel;
@@ -22,22 +22,22 @@ import org.spongepowered.asm.mixin.Pseudo;
 //$$ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 //#endif
 
-//#if MC >= 12103
+//#if MC >= 12103 && MC < 12109
 //$$ import net.minecraft.world.level.ScheduledTickAccess;
-//#elseif MC >= 11800
+//#elseif MC >= 11800 && MC < 12109
 //$$ import net.minecraft.world.level.LevelAccessor;
 //#endif
 
-//#if MC >= 12103
+//#if MC >= 12103 && MC < 12109
 //$$ @Mixin(ScheduledTickAccess.class)
-//#elseif MC >= 11800
+//#elseif MC >= 11800 && MC < 12109
 //$$ @Mixin(LevelAccessor.class)
 //#else
 @Pseudo
 @Mixin(targets = "carpetddsaddition.mixin.placeholder.DirectBlockDropsScheduledTickPlaceholder")
 //#endif
 public interface ScheduledTickAccessMixin {
-    //#if MC >= 12103
+    //#if MC >= 12103 && MC < 12109
     //$$ @Inject(
     //$$         method = "scheduleTick(" +
     //$$                 "Lnet/minecraft/core/BlockPos;" +
@@ -65,7 +65,7 @@ public interface ScheduledTickAccessMixin {
     //$$ }
     //#endif
 
-    //#if MC >= 12103
+    //#if MC >= 12103 && MC < 12109
     //$$ @Inject(
     //$$         method = "scheduleTick(" +
     //$$                 "Lnet/minecraft/core/BlockPos;" +
@@ -95,19 +95,12 @@ public interface ScheduledTickAccessMixin {
     //$$ }
     //#endif
 
-    //#if MC >= 11800
+    //#if MC >= 11800 && MC < 12109
     //$$ private void carpetDDSAddition$recordScheduledBlockTick(BlockPos pos, Block block, int delay) {
-    //$$     ServerPlayer player = DirectDropContext.getPlayer();
-    //$$     if (player == null) return;
-    //$$     ServerLevel level;
-    //#if MC >= 12106
-    //$$     level = player.level();
-    //#elseif MC >= 12000
-    //$$     level = player.serverLevel();
-    //#else
-    //$$     level = player.getLevel();
-    //#endif
-    //$$     PendingDirectDropTicks.record(level, pos, block, delay, player);
+    //$$     DirectDropAttribution.Owner owner = DirectDropAttribution.ownerForSchedule(pos, block);
+    //$$     if (owner == null) return;
+    //$$     PendingDirectDropTicks.record(DirectDropAttribution.playerLevel(owner.player()),
+    //$$             pos, block, delay, owner.player());
     //$$ }
     //#endif
 }

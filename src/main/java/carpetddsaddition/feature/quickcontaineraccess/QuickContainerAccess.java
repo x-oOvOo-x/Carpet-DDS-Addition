@@ -13,5 +13,8 @@ public final class QuickContainerAccess {
     private QuickContainerAccess() {}
     public static boolean enabled() { return DDSRules.quickContainerAccess(); }
     public static boolean soundsDisabled() { return DDSRules.disableQuickContainerAccessSounds(); }
-    public static void onRuleChanged() { if (!enabled()) QuickContainerAccessCompat.closeActiveMenus(); }
+    public static void onRuleChanged() {
+        QuickContainerAccessCompat.revokeCarriedOrigins();
+        QuickContainerAccessCompat.closeInvalidMenus();
+    }
 }

@@ -6,10 +6,13 @@
  */
 package carpetddsaddition.core.bootstrap;
 
+import carpetddsaddition.feature.playershulkerrestock.PlayerShulkerRestockNetwork;
 import carpetddsaddition.feature.quickcontaineraccess.network.QuickContainerAccessServerNetwork;
 import carpetddsaddition.feature.undoredo.network.UndoRedoServerNetwork;
 import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerServerNetwork;
+import carpetddsaddition.integration.playerinventory.DdsPlayerInventoryEnderNetwork;
 import carpetddsaddition.network.DdsPacketRegistry;
+import carpetddsaddition.network.DdsFakePlayerIdentitySync;
 
 /** Composition root for feature and integration packet registration. */
 public final class DdsNetworkBootstrap {
@@ -19,8 +22,11 @@ public final class DdsNetworkBootstrap {
     public static synchronized void initialize() {
         if (initialized) return;
         QuickContainerAccessServerNetwork.registerPackets();
+        PlayerShulkerRestockNetwork.registerPackets();
         UndoRedoServerNetwork.registerPackets();
         DdsFakePlayerServerNetwork.registerPackets();
+        DdsPlayerInventoryEnderNetwork.registerPackets();
+        DdsFakePlayerIdentitySync.registerPackets();
         DdsPacketRegistry.freeze();
         initialized = true;
     }

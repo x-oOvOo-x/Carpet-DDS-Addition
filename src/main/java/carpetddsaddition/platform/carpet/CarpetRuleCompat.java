@@ -1,49 +1,72 @@
 /*
  * This file is part of the Carpet DDS Addition project, licensed under the
  * GNU Lesser General Public License v3.0
- *
- * Copyright (C) 2026  DDS and contributors
- *
- * Carpet DDS Addition is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Carpet DDS Addition is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Carpet DDS Addition.  If not, see <https://www.gnu.org/licenses/>.
  */
 package carpetddsaddition.platform.carpet;
 
 import carpet.CarpetServer;
+import carpetddsaddition.core.rules.DdsRule;
 import carpetddsaddition.core.rules.DdsRuleEvents;
 import carpetddsaddition.generated.CarpetDDSAdditionSettings;
+import carpetddsaddition.generated.DDSRules;
 
 @SuppressWarnings({"deprecation", "removal"})
 public final class CarpetRuleCompat {
+    private static DdsSettingsManager settingsManager;
     private static Object registeredManager;
+
     private CarpetRuleCompat() {}
 
-    public static void registerRules() {
-        Object manager = CarpetServer.settingsManager;
+    public static synchronized void initialize(String version) {
+        if (settingsManager == null) settingsManager = new DdsSettingsManager(version);
+    }
+
+    public static DdsSettingsManager settingsManager() {
+        if (settingsManager == null)
+            throw new IllegalStateException("DDS SettingsManager has not been initialized");
+        return settingsManager;
+    }
+
+    public static synchronized void registerRules() {
+        DdsSettingsManager manager = settingsManager;
         if (manager == null || manager == registeredManager) return;
-        CarpetServer.settingsManager.parseSettingsClass(CarpetDDSAdditionSettings.class);
-        registerRuleObserver();
+
+        //#if MC >= 11902
+        //$$ for (DdsRule<?> rule : DDSRules.registry().available()) registerModern(manager, rule);
+        //#else
+        manager.parseSettingsClass(CarpetDDSAdditionSettings.class);
+        //#endif
+
+        registerRuleObserver(manager);
+        DDSRules.captureCurrentState();
         DdsRuleEvents.captureCurrentState();
         registeredManager = manager;
     }
 
-    private static void registerRuleObserver() {
-        //#if MC >= 11901
-        //$$ CarpetServer.settingsManager.registerRuleObserver((source, changedRule, userInput) ->
-        //$$         DdsRuleEvents.onRuleChanged(CarpetServer.minecraft_server));
-        //#elseif MC >= 11700
-        //$$ CarpetServer.settingsManager.addRuleObserver((source, changedRule, userInput) ->
-        //$$         DdsRuleEvents.onRuleChanged(CarpetServer.minecraft_server));
+    //#if MC >= 11902
+    //$$ private static <T> void registerModern(DdsSettingsManager manager, DdsRule<T> rule) {
+    //$$     manager.addCarpetRule(new DdsCarpetRule<T>(manager, rule));
+    //$$ }
+    //#endif
+
+    private static void registerRuleObserver(DdsSettingsManager manager) {
+        //#if MC >= 11902
+        //$$ manager.registerRuleObserver((source, changedRule, userInput) ->
+        //$$         onManagerRuleChanged(changedRule.name()));
+        //#else
+        manager.addRuleObserver((source, changedRule, userInput) ->
+                onManagerRuleChanged(changedRule.name));
         //#endif
+    }
+
+    private static void onManagerRuleChanged(String name) {
+        DdsRule<?> rule = DDSRules.registry().get(name);
+        if (rule != null) {
+            rule.captureBackendChange(
+                    settingsManager.currentOrigin(),
+                    CarpetServer.minecraft_server
+            );
+        }
+        DdsRuleEvents.onRuleChanged(CarpetServer.minecraft_server);
     }
 }

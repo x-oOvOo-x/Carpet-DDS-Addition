@@ -8,9 +8,16 @@ package carpetddsaddition.mixin.network;
 
 import org.spongepowered.asm.mixin.Mixin;
 //#if MC >= 12002
+//$$ import carpetddsaddition.network.DdsProtocol;
+//$$ import net.minecraft.network.FriendlyByteBuf;
 //$$ import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
+//$$ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+//$$ import net.minecraft.resources.ResourceLocation;
 //#else
 import net.minecraft.network.protocol.game.ServerboundCustomPayloadPacket;
+//#endif
+//#if MC >= 12002 && MC <= 260300
+//$$ import org.spongepowered.asm.mixin.injection.At;
 //#endif
 //#if MC <= 11605
 import carpetddsaddition.network.ServerboundCustomPayloadPacketAccess;
@@ -18,10 +25,17 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.gen.Accessor;
 //#endif
-//#if MC >= 12006 && MC <= 260200
-//$$ import carpetddsaddition.network.DdsProtocol;
-//$$ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-//$$ import org.spongepowered.asm.mixin.injection.At;
+//#if MC >= 12002 && MC < 12006
+//$$ import org.spongepowered.asm.mixin.Final;
+//$$ import org.spongepowered.asm.mixin.Mutable;
+//$$ import org.spongepowered.asm.mixin.Shadow;
+//$$ import org.spongepowered.asm.mixin.injection.Inject;
+//$$ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+//$$ import java.util.Collections;
+//$$ import java.util.LinkedHashMap;
+//$$ import java.util.Map;
+//#endif
+//#if MC >= 12006 && MC <= 260300
 //$$ import org.spongepowered.asm.mixin.injection.ModifyArg;
 //$$ import java.util.ArrayList;
 //$$ import java.util.Collections;
@@ -38,8 +52,18 @@ public abstract class ServerboundCustomPayloadPacketMixin
     @Override @Accessor("identifier") public abstract ResourceLocation dds$getIdentifier();
     @Override @Accessor("data") public abstract FriendlyByteBuf dds$getData();
     //#endif
-
-    //#if MC >= 12006 && MC <= 260200
+    //#if MC >= 12002 && MC < 12006
+    //$$ @Mutable @Shadow @Final
+    //$$ private static Map<ResourceLocation, FriendlyByteBuf.Reader<? extends CustomPacketPayload>> KNOWN_TYPES;
+    //$$
+    //$$ @Inject(method = "<clinit>", at = @At("RETURN"))
+    //$$ private static void dds$registerServerboundReader(CallbackInfo ci) {
+    //$$     Map<ResourceLocation, FriendlyByteBuf.Reader<? extends CustomPacketPayload>> copy = new LinkedHashMap<>(KNOWN_TYPES);
+    //$$     copy.put(DdsProtocol.CHANNEL, DdsProtocol.Payload::new);
+    //$$     KNOWN_TYPES = Collections.unmodifiableMap(copy);
+    //$$ }
+    //#endif
+    //#if MC >= 12006 && MC <= 260300
     //$$ @ModifyArg(
     //$$         method = "<clinit>",
     //$$         at = @At(value = "INVOKE", target =

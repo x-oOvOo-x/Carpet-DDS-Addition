@@ -6,21 +6,18 @@
  */
 package carpetddsaddition.feature.commandcamera.compat;
 
-//#if MC >= 11601 && MC <= 260200
-//$$ import net.minecraft.core.BlockPos;
+//#if MC >= 11601 && MC <= 260300
 //$$ import net.minecraft.server.level.ServerLevel;
 //$$ import net.minecraft.server.level.ServerPlayer;
-//$$ import net.minecraft.util.Mth;
 //$$ import net.minecraft.world.level.GameType;
-//$$ import net.minecraft.world.level.Level;
 //$$ import net.minecraft.world.phys.Vec3;
 //#endif
 
-/** Handles map-mod self teleports for active DDS Camera sessions without loading/generating chunks. */
+/** Handles map-mod self teleports for active DDS Camera sessions under the vanilla spectator chunk policy. */
 public final class CommandCameraMapTeleportCompat {
     private CommandCameraMapTeleportCompat() {}
 
-    //#if MC >= 11601 && MC <= 260200
+    //#if MC >= 11601 && MC <= 260300
     //$$ public static boolean tryHandle(ServerPlayer player, String rawCommand) {
     //$$     if (!CommandCameraCompat.isCamera(player)) return false;
     //$$     Request request = parse(rawCommand);
@@ -39,24 +36,13 @@ public final class CommandCameraMapTeleportCompat {
     //$$         CommandCameraCompat.actionBar(player, "目标维度不存在，无法传送");
     //$$         return true;
     //$$     }
-    //$$     BlockPos targetPos = new BlockPos(Mth.floor(request.x), Mth.floor(request.y), Mth.floor(request.z));
-    //$$     if (!Level.isInSpawnableBounds(targetPos)) {
-    //$$         CommandCameraCompat.actionBar(player, "目标位置超出有效范围，无法传送");
-    //$$         return true;
-    //$$     }
-    //$$     int chunkX = targetPos.getX() >> 4, chunkZ = targetPos.getZ() >> 4;
-    //$$     if (!destination.getChunkSource().hasChunk(chunkX, chunkZ)) {
-    //$$         CommandCameraCompat.actionBar(player, "目标区块未加载，无法传送");
-    //$$         return true;
-    //$$     }
-    //$$     CommandCameraCompat.stopFollowing(player, false);
-    //$$     player.setCamera(player);
-    //$$     if (!CommandCameraCompat.teleportPlayer(player, destination, request.x, request.y, request.z,
-    //$$             CommandCameraCompat.yawOf(player), CommandCameraCompat.pitchOf(player))) {
-    //$$         CommandCameraCompat.actionBar(player, "无法传送到目标位置");
-    //$$         return true;
-    //$$     }
-    //$$     player.setDeltaMovement(Vec3.ZERO);
+    //$$     CommandCameraCompat.teleportActiveCamera(
+    //$$             player,
+    //$$             destination,
+    //$$             new Vec3(request.x, request.y, request.z),
+    //$$             CommandCameraCompat.yawOf(player),
+    //$$             CommandCameraCompat.pitchOf(player)
+    //$$     );
     //$$     return true;
     //$$ }
     //$$

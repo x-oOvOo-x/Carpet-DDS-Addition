@@ -30,8 +30,12 @@ import net.minecraft.commands.CommandSourceStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.ArrayList;
+import java.util.List;
 
 //#if MC >= 11901
 //$$ import carpet.api.settings.SettingsManager;
@@ -41,6 +45,38 @@ import carpet.settings.SettingsManager;
 
 @Mixin(SettingsManager.class)
 public abstract class SettingsManagerMixin {
+
+    /**
+     * Keeps the historical [DDS] browse entry on /carpet without registering
+     * CDA rules in Carpet's main manager. The click target remains
+     * /carpet list DDS and is forwarded by DdsRuleCommandCompat.
+     */
+    @Redirect(
+            method = "listAllSettings",
+            at = @At(
+                    value = "INVOKE",
+                    //#if MC >= 11901
+                    //$$ target = "Lcarpet/api/settings/SettingsManager;getCategories()Ljava/lang/Iterable;",
+                    //#else
+                    target = "Lcarpet/settings/SettingsManager;getCategories()Ljava/lang/Iterable;",
+                    //#endif
+                    remap = false
+            )
+    )
+    private Iterable<String> carpetDDSAddition$appendVirtualDdsCategory(SettingsManager manager) {
+        Iterable<String> original = manager.getCategories();
+        if (manager != CarpetServer.settingsManager) return original;
+
+        List<String> categories = new ArrayList<String>();
+        boolean hasDds = false;
+        for (String category : original) {
+            categories.add(category);
+            if ("DDS".equals(category)) hasDds = true;
+        }
+        if (!hasDds) categories.add("DDS");
+        return categories;
+    }
+
     @Inject(
             method = "listAllSettings",
             //#if MC < 11901

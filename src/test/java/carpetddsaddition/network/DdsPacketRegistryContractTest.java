@@ -7,6 +7,8 @@
 package carpetddsaddition.network;
 
 import carpetddsaddition.core.bootstrap.DdsNetworkBootstrap;
+import carpetddsaddition.feature.playershulkerrestock.compat.PlayerShulkerRestockNetworkCompat;
+import carpetddsaddition.network.DdsFakePlayerIdentitySync;
 import carpetddsaddition.feature.quickcontaineraccess.network.QuickContainerAccessPackets;
 import carpetddsaddition.feature.undoredo.network.UndoRedoPackets;
 import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerPackets;
@@ -26,20 +28,57 @@ final class DdsPacketRegistryContractTest {
                 QuickContainerAccessPackets.STORAGE_CLICK_C2S,
                 QuickContainerAccessPackets.CREATIVE_STORAGE_C2S,
                 QuickContainerAccessPackets.NAVIGATE_BACK_C2S,
+                QuickContainerAccessPackets.OPEN_OWNER_ENDER_C2S,
+                PlayerShulkerRestockNetworkCompat.PREFERENCES_C2S,
                 UndoRedoPackets.UNDO_C2S,
                 UndoRedoPackets.REDO_C2S,
-                DdsFakePlayerPackets.ACTION_C2S)), DdsPacketRegistry.localC2SPackets());
+                DdsFakePlayerPackets.ACTION_C2S,
+                DdsFakePlayerPackets.PROVIDER_ACTION_C2S,
+                DdsFakePlayerPackets.CANONICAL_ENDER_C2S,
+                DdsFakePlayerPackets.RETURN_PARENT_C2S)), DdsPacketRegistry.localC2SPackets());
         assertEquals(new LinkedHashSet<>(Arrays.asList(
                 QuickContainerAccessPackets.CREATIVE_STORAGE_RESULT_S2C,
                 QuickContainerAccessPackets.NAVIGATION_STATE_S2C,
-                DdsFakePlayerPackets.OPEN_MENU_S2C)), DdsPacketRegistry.localS2CPackets());
+                PlayerShulkerRestockNetworkCompat.STATUS_S2C,
+                DdsFakePlayerPackets.CONTEXT_S2C,
+                DdsFakePlayerPackets.STATE_S2C,
+                DdsFakePlayerPackets.SESSION_V3_CAPABILITY_S2C,
+                DdsFakePlayerPackets.STRUCTURE_RESULT_S2C,
+                DdsFakePlayerIdentitySync.SNAPSHOT_S2C)), DdsPacketRegistry.localS2CPackets());
+    }
+
+    @Test void bundledClientDoesNotAdvertiseTweakOwnedFakePlayerPackets() {
+        assertEquals(new LinkedHashSet<>(Arrays.asList(
+                QuickContainerAccessPackets.OPEN_SLOT_C2S,
+                QuickContainerAccessPackets.OPEN_INVENTORY_SLOT_C2S,
+                QuickContainerAccessPackets.STORAGE_CLICK_C2S,
+                QuickContainerAccessPackets.CREATIVE_STORAGE_C2S,
+                QuickContainerAccessPackets.NAVIGATE_BACK_C2S,
+                UndoRedoPackets.UNDO_C2S,
+                UndoRedoPackets.REDO_C2S)), DdsPacketRegistry.clientC2SPackets());
+        assertEquals(new LinkedHashSet<>(Arrays.asList(
+                QuickContainerAccessPackets.CREATIVE_STORAGE_RESULT_S2C,
+                QuickContainerAccessPackets.NAVIGATION_STATE_S2C)), DdsPacketRegistry.clientS2CPackets());
+        assertFalse(DdsPacketRegistry.clientC2SPackets().contains(PlayerShulkerRestockNetworkCompat.PREFERENCES_C2S));
+        assertFalse(DdsPacketRegistry.clientS2CPackets().contains(PlayerShulkerRestockNetworkCompat.STATUS_S2C));
+        assertFalse(DdsPacketRegistry.clientC2SPackets().contains(DdsFakePlayerPackets.ACTION_C2S));
+        assertFalse(DdsPacketRegistry.clientC2SPackets().contains(DdsFakePlayerPackets.PROVIDER_ACTION_C2S));
+        assertFalse(DdsPacketRegistry.clientC2SPackets().contains(DdsFakePlayerPackets.CANONICAL_ENDER_C2S));
+        assertFalse(DdsPacketRegistry.clientC2SPackets().contains(DdsFakePlayerPackets.RETURN_PARENT_C2S));
+        assertFalse(DdsPacketRegistry.clientC2SPackets().contains(QuickContainerAccessPackets.OPEN_OWNER_ENDER_C2S));
+        assertFalse(DdsPacketRegistry.clientS2CPackets().contains(DdsFakePlayerPackets.CONTEXT_S2C));
+        assertFalse(DdsPacketRegistry.clientS2CPackets().contains(DdsFakePlayerPackets.STATE_S2C));
+        assertFalse(DdsPacketRegistry.clientS2CPackets().contains(DdsFakePlayerPackets.SESSION_V3_CAPABILITY_S2C));
+        assertFalse(DdsPacketRegistry.clientS2CPackets().contains(DdsFakePlayerPackets.STRUCTURE_RESULT_S2C));
+        assertFalse(DdsPacketRegistry.clientS2CPackets().contains(DdsFakePlayerIdentitySync.SNAPSHOT_S2C));
     }
 
     @Test void qcaLegacyAndNavigationPacketsKeepDisabledGracePolicy() {
         for (String id : Arrays.asList(QuickContainerAccessPackets.OPEN_SLOT_C2S,
                 QuickContainerAccessPackets.OPEN_INVENTORY_SLOT_C2S,
                 QuickContainerAccessPackets.STORAGE_CLICK_C2S,
-                QuickContainerAccessPackets.NAVIGATE_BACK_C2S)) {
+                QuickContainerAccessPackets.NAVIGATE_BACK_C2S,
+                QuickContainerAccessPackets.OPEN_OWNER_ENDER_C2S)) {
             DdsPacketRegistry.C2SPacket packet = DdsPacketRegistry.getC2S(id);
             assertFalse(packet.requireClientAdvertisement()); assertTrue(packet.allowDisabledGrace());
         }
@@ -57,9 +96,56 @@ final class DdsPacketRegistryContractTest {
         }
     }
 
+    @Test void restockPreferencesRequireOptInAndNeverUseDisabledProtocolGrace() {
+        DdsPacketRegistry.C2SPacket packet = DdsPacketRegistry.getC2S(
+                PlayerShulkerRestockNetworkCompat.PREFERENCES_C2S);
+        assertNotNull(packet);
+        assertTrue(packet.requireClientAdvertisement());
+        assertFalse(packet.allowDisabledGrace());
+    }
+
     @Test void fakePlayerActionsRequireExplicitClientAdvertisement() {
-        DdsPacketRegistry.C2SPacket packet = DdsPacketRegistry.getC2S(DdsFakePlayerPackets.ACTION_C2S);
-        assertTrue(packet.requireClientAdvertisement()); assertFalse(packet.allowDisabledGrace());
+        for(String id:Arrays.asList(DdsFakePlayerPackets.ACTION_C2S,DdsFakePlayerPackets.PROVIDER_ACTION_C2S)){
+            DdsPacketRegistry.C2SPacket packet = DdsPacketRegistry.getC2S(id);
+            assertTrue(packet.requireClientAdvertisement()); assertFalse(packet.allowDisabledGrace());
+        }
+    }
+
+    @Test void strictStructurePacketsRequireNegotiationAndExtensionAvailability() {
+        for(String id:Arrays.asList(DdsFakePlayerPackets.CANONICAL_ENDER_C2S,DdsFakePlayerPackets.RETURN_PARENT_C2S)){
+            DdsPacketRegistry.C2SPacket packet=DdsPacketRegistry.getC2S(id);
+            assertTrue(packet.requireClientAdvertisement()); assertFalse(packet.allowDisabledGrace());
+            assertTrue(packet.hasAvailabilityPredicate());
+        }
+    }
+
+    @Test void qcaAndUndoPacketsHaveFeatureAvailabilityPredicates() {
+        for (String id : Arrays.asList(
+                QuickContainerAccessPackets.OPEN_SLOT_C2S,
+                QuickContainerAccessPackets.OPEN_INVENTORY_SLOT_C2S,
+                QuickContainerAccessPackets.STORAGE_CLICK_C2S,
+                QuickContainerAccessPackets.CREATIVE_STORAGE_C2S,
+                QuickContainerAccessPackets.NAVIGATE_BACK_C2S,
+                QuickContainerAccessPackets.OPEN_OWNER_ENDER_C2S,
+                UndoRedoPackets.UNDO_C2S,
+                UndoRedoPackets.REDO_C2S))
+            assertTrue(DdsPacketRegistry.getC2S(id).hasAvailabilityPredicate(), id);
+        assertFalse(DdsPacketRegistry.getC2S(DdsFakePlayerPackets.ACTION_C2S).hasAvailabilityPredicate());
+        assertFalse(DdsPacketRegistry.getC2S(DdsFakePlayerPackets.PROVIDER_ACTION_C2S).hasAvailabilityPredicate());
+    }
+
+    @Test void retiredWireIdsAreNotRegisteredOrAcceptedDuringHello() {
+        String oldAction = "qca_owner_ender_action_c2s";
+        String oldMenu = "fake_player_open_menu_s2c";
+        assertNull(DdsPacketRegistry.getC2S(oldAction));
+        assertFalse(DdsPacketRegistry.localC2SPackets().contains(oldAction));
+        assertFalse(DdsPacketRegistry.localS2CPackets().contains(oldMenu));
+        assertFalse(DdsProtocol.decodeKnownIds(oldAction, DdsPacketRegistry.localC2SPackets()).contains(oldAction));
+        assertFalse(DdsProtocol.decodeKnownIds(oldMenu, DdsPacketRegistry.localS2CPackets()).contains(oldMenu));
+        assertNotNull(DdsPacketRegistry.getC2S(QuickContainerAccessPackets.OPEN_OWNER_ENDER_C2S));
+        assertTrue(DdsPacketRegistry.localS2CPackets().contains(QuickContainerAccessPackets.NAVIGATION_STATE_S2C));
+        assertTrue(DdsPacketRegistry.localS2CPackets().contains(DdsFakePlayerPackets.CONTEXT_S2C));
+        assertTrue(DdsPacketRegistry.localS2CPackets().contains(DdsFakePlayerPackets.STATE_S2C));
     }
 
     @Test void transportReservedIdsCannotBeRegisteredAsFeaturePackets() {
@@ -84,7 +170,7 @@ final class DdsPacketRegistryContractTest {
         assertThrows(IllegalStateException.class, () -> DdsPacketRegistry.registerC2S(
                 QuickContainerAccessPackets.STORAGE_CLICK_C2S, (player, data) -> {}, false, true));
         assertThrows(IllegalStateException.class, () -> DdsPacketRegistry.registerS2C(QuickContainerAccessPackets.CREATIVE_STORAGE_RESULT_S2C));
-        assertEquals(8, DdsPacketRegistry.localC2SPackets().size());
-        assertEquals(3, DdsPacketRegistry.localS2CPackets().size());
+        assertEquals(13, DdsPacketRegistry.localC2SPackets().size());
+        assertEquals(8, DdsPacketRegistry.localS2CPackets().size());
     }
 }

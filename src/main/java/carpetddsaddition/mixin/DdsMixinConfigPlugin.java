@@ -19,6 +19,7 @@ public final class DdsMixinConfigPlugin implements IMixinConfigPlugin {
     private static final String[][] OPTIONAL_INTEGRATIONS = {
             {"carpetddsaddition.mixin.integration.gca.", "gca"},
             {"carpetddsaddition.mixin.integration.carpet.gca.", "gca"},
+            {"carpetddsaddition.mixin.integration.org.", "carpet-org-addition"},
             {"carpetddsaddition.mixin.integration.inventoryprofilesnext.", "inventoryprofilesnext"},
             {"carpetddsaddition.mixin.integration.minihud.", "minihud"}
     };
@@ -32,6 +33,7 @@ public final class DdsMixinConfigPlugin implements IMixinConfigPlugin {
         }
         return true;
     }
+
     @Override public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {}
     @Override public List<String> getMixins() { return null; }
     @Override public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {}

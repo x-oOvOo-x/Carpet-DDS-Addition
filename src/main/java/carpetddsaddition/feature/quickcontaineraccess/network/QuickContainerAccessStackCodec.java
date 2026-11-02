@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.feature.quickcontaineraccess.network;
 
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -21,7 +21,7 @@ import net.minecraft.world.item.ItemStack;
 final class QuickContainerAccessStackCodec {
     private QuickContainerAccessStackCodec() {}
 
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     static void put(CompoundTag payload, String key, Player player, ItemStack stack) {
         if (stack == null || stack.isEmpty()) { payload.putInt(key + "_empty", 1); return; }
         //#if MC >= 12005

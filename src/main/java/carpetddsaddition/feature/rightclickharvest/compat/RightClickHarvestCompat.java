@@ -42,9 +42,9 @@ public final class RightClickHarvestCompat {
         updateCrop(level, pos, state, ageProperty, replant);
         // directBlockDrops only changes the destination of already-calculated drops.
         if (player instanceof ServerPlayer) {
-            DirectDropContext.push((ServerPlayer) player);
-            try { dropItems(level, pos, drops); }
-            finally { DirectDropContext.pop(); }
+            try (DirectDropContext.Scope ignored = DirectDropContext.enter((ServerPlayer) player)) {
+                dropItems(level, pos, drops);
+            }
         } else dropItems(level, pos, drops);
         return true;
     }

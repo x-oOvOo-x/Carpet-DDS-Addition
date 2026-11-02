@@ -12,7 +12,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 public final class QuickContainerAccessSafety {
     private QuickContainerAccessSafety() {}
     public static void validateOwners(AbstractContainerMenu menu) {
-        //#if MC >= 11404 && MC <= 260200
+        //#if MC >= 11404 && MC <= 260300
         QuickContainerAccessSession.Session session = QuickContainerAccessSession.get(menu);
         if (session != null && !QuickContainerAccessNavigation.ownersPresent(session)) session.player.closeContainer();
         //#endif

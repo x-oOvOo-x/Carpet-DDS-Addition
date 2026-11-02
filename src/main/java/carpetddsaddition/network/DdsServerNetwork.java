@@ -7,6 +7,7 @@
 package carpetddsaddition.network;
 
 import carpetddsaddition.CarpetDDSAddition;
+import carpetddsaddition.network.DdsFakePlayerIdentitySync;
 import carpetddsaddition.generated.DDSRules;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -16,7 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,7 +33,7 @@ import net.minecraft.network.protocol.game.ClientboundCustomPayloadPacket;
 
 /** Server-side DDS protocol dispatcher. */
 public final class DdsServerNetwork {
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     private static final Map<ServerGamePacketListenerImpl, ClientState> CLIENTS = new WeakHashMap<>();
     private static WeakReference<MinecraftServer> boundServer = new WeakReference<>(null);
     private static boolean observedProtocolEnabled;
@@ -40,7 +41,7 @@ public final class DdsServerNetwork {
 
     private DdsServerNetwork() {}
 
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     public static boolean doesClientSupport(ServerPlayer player, String packetId) {
         if (!DDSRules.ddsNetworkProtocol() || player == null || player.connection == null) return false;
         ClientState state = CLIENTS.get(player.connection);
@@ -71,6 +72,9 @@ public final class DdsServerNetwork {
             if (listener != null) {
                 sendHello(listener, enabled);
             }
+            //#if MC >= 11404 && MC <= 260300
+            if (listener != null && enabled && !wasEnabled) DdsFakePlayerIdentitySync.sendSnapshot(listener.player, server);
+            //#endif
         }
     }
 
@@ -135,7 +139,8 @@ public final class DdsServerNetwork {
         ClientState state = CLIENTS.get(listener);
         if (state == null || !DdsServerRoutePolicy.isProtocolCompatible(state.protocolVersion) || !state.allowRequest()) return;
         DdsPacketRegistry.C2SPacket packet = DdsPacketRegistry.getC2S(packetId);
-        if (!DdsServerRoutePolicy.canDispatchEnabled(packet, state.supportedC2S)) return;
+        if (packet == null || !packet.available(listener.player)
+                || !DdsServerRoutePolicy.canDispatchEnabled(packet, state.supportedC2S)) return;
         packet.handle(listener.player, payload.data());
     }
 
@@ -150,7 +155,8 @@ public final class DdsServerNetwork {
         ClientState previous = CLIENTS.get(listener);
         DdsPacketRegistry.C2SPacket packet = DdsPacketRegistry.getC2S(packetId);
         // One eligible packet may complete an in-flight interaction after true -> false; the grace is consumed once.
-        if (previous != null && DdsServerRoutePolicy.isProtocolCompatible(previous.protocolVersion)
+        if (previous != null && packet != null && packet.available(listener.player)
+                && DdsServerRoutePolicy.isProtocolCompatible(previous.protocolVersion)
                 && DdsServerRoutePolicy.canDispatchDisabledGrace(packet, previous.supportedC2S)
                 && previous.allowRequest() && previous.consumeDisabledGrace())
             packet.handle(listener.player, payload.data());
@@ -181,16 +187,35 @@ public final class DdsServerNetwork {
     //#endif
         Set<String> supportedS2C = DdsProtocol.decodeKnownIds(supportedS2CEncoded, DdsPacketRegistry.localS2CPackets());
         Set<String> supportedC2S = DdsProtocol.decodeKnownIds(supportedC2SEncoded, DdsPacketRegistry.localC2SPackets());
+        boolean identityAlreadySupported = state.supportedS2C.contains(DdsFakePlayerIdentitySync.SNAPSHOT_S2C);
         state.updateHandshake(protocol, supportedS2C, supportedC2S);
         sendHello(listener, enabled);
+        //#if MC >= 11404 && MC <= 260300
+        if (enabled && !identityAlreadySupported && state.supportedS2C.contains(DdsFakePlayerIdentitySync.SNAPSHOT_S2C))
+            DdsFakePlayerIdentitySync.sendSnapshot(listener.player, carpet.CarpetServer.minecraft_server);
+        //#endif
+    }
+
+    public static void refreshCapabilities(MinecraftServer server) {
+        if (server == null) return;
+        bindServer(server);
+        boolean enabled = DDSRules.ddsNetworkProtocol();
+        for (ServerGamePacketListenerImpl listener : new ArrayList<>(CLIENTS.keySet())) {
+            ClientState state = listener == null ? null : CLIENTS.get(listener);
+            if (state != null && DdsServerRoutePolicy.isProtocolCompatible(state.protocolVersion))
+                sendHello(listener, enabled);
+        }
     }
 
     private static void sendHello(ServerGamePacketListenerImpl listener, boolean enabled) {
         CompoundTag reply = new CompoundTag();
         reply.putInt("protocol", DdsProtocol.VERSION);
         reply.putInt("protocol_enabled", enabled ? 1 : 0);
+        reply.putInt("c2s_availability_schema", 1);
         reply.putString("mod_version", CarpetDDSAddition.getVersion());
-        reply.putString("supported_c2s", enabled ? DdsProtocol.encodeIds(DdsPacketRegistry.localC2SPackets()) : "");
+        reply.putString("supported_c2s", enabled
+                ? DdsProtocol.encodeIds(DdsPacketRegistry.availableC2SPackets(listener.player))
+                : "");
         sendPayload(listener, DdsProtocol.HELLO_S2C, reply);
     }
 

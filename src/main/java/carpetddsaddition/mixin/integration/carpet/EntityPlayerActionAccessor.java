@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.mixin.integration.carpet;
 
-//#if MC >= 11902 && MC <= 260200
+//#if MC >= 11902 && MC <= 260300
 //$$ import carpet.helpers.EntityPlayerActionPack;
 //$$ import org.spongepowered.asm.mixin.Mixin;
 //$$ import org.spongepowered.asm.mixin.gen.Accessor;

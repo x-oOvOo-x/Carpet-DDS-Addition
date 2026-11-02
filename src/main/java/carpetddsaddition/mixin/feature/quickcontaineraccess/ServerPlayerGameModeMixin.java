@@ -8,7 +8,7 @@ package carpetddsaddition.mixin.feature.quickcontaineraccess;
 
 import carpetddsaddition.feature.quickcontaineraccess.compat.QuickContainerAccessCompat;
 import net.minecraft.server.level.ServerPlayerGameMode;
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 //#if MC < 11600
 import net.minecraft.world.entity.player.Player;
 //#else
@@ -17,6 +17,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.ItemStack;
+//#if MC >= 260300
+//$$ import net.minecraft.world.item.component.SwingAnimation;
+//#endif
 import net.minecraft.world.level.Level;
 //#endif
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ServerPlayerGameMode.class)
 public abstract class ServerPlayerGameModeMixin {
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     @Inject(method = "useItem", at = @At("HEAD"), cancellable = true)
     private void dds$quickContainerUseInAir(
             //#if MC < 11600
@@ -37,7 +40,9 @@ public abstract class ServerPlayerGameModeMixin {
             Level level, ItemStack stack, InteractionHand hand,
             CallbackInfoReturnable<InteractionResult> cir) {
         if (!QuickContainerAccessCompat.tryOpenInHand(player, stack, hand)) return;
-        //#if MC >= 11502
+        //#if MC >= 260300
+        //$$ player.swing(hand, SwingAnimation.DEFAULT, true);
+        //#elseif MC >= 11502
         player.swing(hand, true);
         //#else
         //$$ player.swing(hand);

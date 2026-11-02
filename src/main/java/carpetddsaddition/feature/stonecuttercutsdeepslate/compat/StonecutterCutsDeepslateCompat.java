@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2026 DDS and contributors
  */
+//#if MC < 260100
 package carpetddsaddition.feature.stonecuttercutsdeepslate.compat;
 
 import carpetddsaddition.CarpetDDSAddition;
@@ -78,7 +79,16 @@ public final class StonecutterCutsDeepslateCompat {
     //#if MC >= 12103
     //$$ private static List<RecipeHolder<?>> buildModernRecipes(RecipeManager manager,boolean enabled){
     //$$     List<RecipeHolder<?>> recipes=new ArrayList<RecipeHolder<?>>(manager.getRecipes()); recipes.removeIf(GENERATED_ENTRIES::contains); GENERATED_ENTRIES.clear();
-    //$$     if(enabled)addMirroredRecipes(((RecipeManagerBridge)(Object)manager).carpetDDSAddition$getRegistries(),recipes); return recipes;
+    //#if MC >= 260300
+    //$$     if(enabled)addMirroredRecipes(null,recipes);
+    //#else
+    //$$     if(enabled)addMirroredRecipes(((RecipeManagerBridge)(Object)manager).carpetDDSAddition$getRegistries(),recipes);
+    //#endif
+    //$$     return recipes;
+    //$$ }
+    //$$ public static void contribute(List<RecipeHolder<?>> recipes, HolderLookup.Provider registries) {
+    //$$     GENERATED_ENTRIES.clear();
+    //$$     addMirroredRecipes(registries, recipes);
     //$$ }
     //$$ private static void addMirroredRecipes(HolderLookup.Provider registries,List<RecipeHolder<?>> recipes){
     //$$     List<RecipeHolder<?>> original=new ArrayList<RecipeHolder<?>>(recipes); Set<Object> usedIds=new HashSet<Object>(); for(RecipeHolder<?> holder:recipes)usedIds.add(holder.id());
@@ -167,3 +177,4 @@ public final class StonecutterCutsDeepslateCompat {
     //$$ }
     //#endif
 }
+//#endif

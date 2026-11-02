@@ -22,6 +22,40 @@ def supportedVersions = (versionConfig.activeVersions ?: versionConfig.versions)
     it.toString()
 }
 
+def clientOwnershipContract = new JsonSlurper().parseText(
+        file('config/dds-client-ownership-contract.json').getText('UTF-8')
+)
+def ownershipTargets = clientOwnershipContract.targets ?: []
+def ownershipVersions = ownershipTargets.collect { it.minecraft.toString() }
+if (clientOwnershipContract.schema?.toString() != '1'
+        || clientOwnershipContract.canonicalSource?.toString()
+        != 'x-oOvOo-x/Carpet-DDS-Addition-Dev:config/dds-client-ownership-contract.json') {
+    throw new GradleException('Invalid DDS client ownership contract identity')
+}
+if (ownershipVersions.toSet().size() != ownershipVersions.size()) {
+    throw new GradleException('DDS client ownership contract contains duplicate Minecraft targets')
+}
+def contractDdsActiveVersions = ownershipTargets.findAll {
+    it.ddsStatus == 'active'
+}.collect {
+    it.minecraft.toString()
+} as Set
+if ((supportedVersions as Set) != contractDdsActiveVersions) {
+    throw new GradleException(
+            'DDS activeVersions drifted from client ownership contract. '
+                    + 'settings=' + (supportedVersions as Set)
+                    + ', contract=' + contractDdsActiveVersions
+    )
+}
+def knownWireModes = [
+        'DDS_PAYLOAD_CODEC',
+        'DDS_PAYLOAD_READER_MAP',
+        'LEGACY_CUSTOM_PAYLOAD',
+] as Set
+if (ownershipTargets.any { !knownWireModes.contains(it.wireMode?.toString()) }) {
+    throw new GradleException('DDS client ownership contract contains an unknown wire mode')
+}
+
 def orderedBuildTaskPaths = supportedVersions.collect {
     ":${it}:build"
 }
@@ -37,12 +71,25 @@ def mixinAuditTaskPaths = supportedVersions.collectMany { version ->
     ]
 }
 
+def protocolBaselineVersions = [
+        '1.20.1',
+        '1.20.2',
+        '1.20.4',
+        '1.20.6',
+        '26.3',
+]
+
+def protocolBaselineTaskPaths = protocolBaselineVersions.collect {
+    ":${it}:runProtocolBaseline"
+}
+
 preprocess {
     strictExtraMappings = false
 
     /*
      * Keep node declarations in newest -> oldest order for readability.
      */
+    def mc263 = createNode('26.3', 26_03_00, null)
     def mc262 = createNode('26.2', 26_02_00, null)
     def mc2612 = createNode('26.1.2', 26_01_02, null)
 
@@ -170,6 +217,11 @@ preprocess {
             file('versions/mapping-26.1.2-26.2.txt')
     )
 
+    mc262.link(
+            mc263,
+            file('versions/mapping-26.2-26.3.txt')
+    )
+
 
     /*
      * Expose the numeric Minecraft version to every subproject.
@@ -229,6 +281,25 @@ gradle.projectsEvaluated {
                 .configure {
                     mustRunAfter(
                             ":${previousVersion}:runMixinAuditClient"
+                    )
+                }
+    }
+}
+
+/*
+ * Protocol baseline audits are deliberately serialized.
+ */
+gradle.projectsEvaluated {
+    for (int i = 1; i < protocolBaselineVersions.size(); i++) {
+        def currentVersion = protocolBaselineVersions[i]
+        def previousVersion = protocolBaselineVersions[i - 1]
+
+        project(":${currentVersion}")
+                .tasks
+                .named('runProtocolBaseline')
+                .configure {
+                    mustRunAfter(
+                            ":${previousVersion}:runProtocolBaseline"
                     )
                 }
     }
@@ -314,6 +385,18 @@ tasks.register('auditMixinsAll') {
 }
 
 /*
+ * Run the DDS Protocol baseline on network-generation boundary targets.
+ */
+tasks.register('auditProtocolBaseline') {
+    group = 'verification'
+
+    description =
+            'Audits DDS Protocol payload registration on network boundary targets through Minecraft 26.3.'
+
+    dependsOn(protocolBaselineTaskPaths)
+}
+
+/*
  * Build every supported Minecraft target.
  */
 tasks.register('buildAll') {
@@ -328,70 +411,65 @@ tasks.register('buildAll') {
 
 
 /*
- * Build every supported Minecraft target and gather exactly one runtime jar
- * for each target into a single release directory.
+ * Gather exactly one current runtime jar per supported target.
  *
- * Do not scan/copy every jar from versions/<target>/build/libs: local builds may leave
- * stale artifacts from an older mod version behind. The expected archive name
- * is derived from the same Gradle properties that define each subproject jar.
+ * Keep release and pre-cutover output directories separate: pre-cutover jars
+ * deliberately publish temporary ownership markers and must never be mistaken
+ * for normal release artifacts.
  */
+def gatherRuntimeJars = { String directoryName ->
+    def out = layout
+            .buildDirectory
+            .dir(directoryName)
+            .get()
+            .asFile
+
+    delete out
+    out.mkdirs()
+
+    def gatheredNames = []
+
+    supportedVersions.each { version ->
+        def p = project(":${version}")
+        def expectedName =
+                "${p.archives_base_name}-v${p.mod_version}-mc${p.minecraft_version}.jar"
+        def releaseJar = new File(
+                p.buildDir,
+                "libs/${expectedName}"
+        )
+
+        if (!releaseJar.isFile()) {
+            throw new GradleException(
+                    "Expected runtime jar was not produced for ${p.path}: ${releaseJar}"
+            )
+        }
+
+        copy {
+            from(releaseJar)
+            into(out)
+        }
+
+        gatheredNames << expectedName
+    }
+
+    if (gatheredNames.size() != supportedVersions.size()
+            || gatheredNames.toSet().size() != supportedVersions.size()) {
+        throw new GradleException(
+                'Jar gathering did not produce exactly one unique jar per supported target.'
+        )
+    }
+
+    println "Runtime jars (${gatheredNames.size()}): ${out}"
+    gatheredNames.each {
+        println "  ${it}"
+    }
+}
+
 tasks.register('buildAndGather') {
     group = 'build'
-
     description =
             'Builds all targets and gathers exactly one current release jar per target into build/releases.'
-
     dependsOn('verifyFramework')
     dependsOn(orderedBuildTaskPaths)
-
-    doLast {
-        def out = layout
-                .buildDirectory
-                .dir('releases')
-                .get()
-                .asFile
-
-        delete out
-        out.mkdirs()
-
-        def gatheredNames = []
-
-        /*
-         * Gather in the same newest -> oldest order used by activeVersions.
-         */
-        supportedVersions.each { version ->
-            def p = project(":${version}")
-            def expectedName =
-                    "${p.archives_base_name}-v${p.mod_version}-mc${p.minecraft_version}.jar"
-            def releaseJar = new File(
-                    p.buildDir,
-                    "libs/${expectedName}"
-            )
-
-            if (!releaseJar.isFile()) {
-                throw new GradleException(
-                        "Expected release jar was not produced for ${p.path}: ${releaseJar}"
-                )
-            }
-
-            copy {
-                from(releaseJar)
-                into(out)
-            }
-
-            gatheredNames << expectedName
-        }
-
-        if (gatheredNames.size() != supportedVersions.size()
-                || gatheredNames.toSet().size() != supportedVersions.size()) {
-            throw new GradleException(
-                    'Release jar gathering did not produce exactly one unique jar per supported target.'
-            )
-        }
-
-        println "Release jars (${gatheredNames.size()}): ${out}"
-        gatheredNames.each {
-            println "  ${it}"
-        }
-    }
+    doLast { gatherRuntimeJars('releases') }
 }

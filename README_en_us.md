@@ -3,7 +3,7 @@
 [![license](https://img.shields.io/github/license/x-oOvOo-x/Carpet-DDS-Addition?style=flat-square)](LICENSE)
 [![issues](https://img.shields.io/github/issues/x-oOvOo-x/Carpet-DDS-Addition?style=flat-square)](https://github.com/x-oOvOo-x/Carpet-DDS-Addition/issues)
 [![build](https://github.com/x-oOvOo-x/Carpet-DDS-Addition/actions/workflows/build.yml/badge.svg)](https://github.com/x-oOvOo-x/Carpet-DDS-Addition/actions/workflows/build.yml)
-![Minecraft](https://img.shields.io/badge/Minecraft-20_active_targets-orange?style=flat-square)
+![Minecraft](https://img.shields.io/badge/Minecraft-21_active_targets-orange?style=flat-square)
 
 [中文](README.md) | **English**
 
@@ -18,13 +18,21 @@ A server-side [Carpet mod](https://github.com/gnembon/fabric-carpet) extension f
 
 Carpet DDS Addition uses a multi-version source/build structure.
 
-There are currently 20 active build and release targets:
+There are currently 21 active build and release targets:
 
-`1.14.4` · `1.15.2` · `1.16.5` · `1.17.1` · `1.18.2` · `1.19.4` · `1.20.1` · `1.20.2` · `1.20.4` · `1.20.6` · `1.21.1` · `1.21.3` · `1.21.4` · `1.21.5` · `1.21.8` · `1.21.9` · `1.21.10` · `1.21.11` · `26.1.2` · `26.2`
+`1.14.4` · `1.15.2` · `1.16.5` · `1.17.1` · `1.18.2` · `1.19.4` · `1.20.1` · `1.20.2` · `1.20.4` · `1.20.6` · `1.21.1` · `1.21.3` · `1.21.4` · `1.21.5` · `1.21.8` · `1.21.9` · `1.21.10` · `1.21.11` · `26.1.2` · `26.2` · `26.3`
 
 Minecraft versions that reach EOL no longer receive routine feature or compatibility maintenance. Existing historical releases remain available. 
 
 Some rules require newer Minecraft versions. See the [rule documentation](docs/rules.md) for rule-specific minimum versions.
+
+## Rule management
+
+CDA rules belong to the dedicated `carpet-dds-addition` settings manager.
+Use `/cda` to view or change them; legacy `/carpet <CDA rule>`
+commands remain supported. Persistent CDA settings are stored in the world's
+`carpet-dds-addition.conf`; CDA migrates existing rule entries from
+`carpet.conf` when upgrading.
 
 ## License
 

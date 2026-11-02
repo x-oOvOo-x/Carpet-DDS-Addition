@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.mixin.feature.commandcamera;
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ import com.mojang.brigadier.CommandDispatcher;
 //$$ import carpetddsaddition.feature.commandcamera.compat.CommandCameraCommandCompat;
 //$$ import net.minecraft.commands.CommandSourceStack;
@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 //#endif
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ @Mixin(Commands.class)
 //$$ public abstract class CommandsMixin {
 //$$     @Shadow @Final private CommandDispatcher<CommandSourceStack> dispatcher;

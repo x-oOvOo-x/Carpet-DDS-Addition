@@ -8,14 +8,14 @@ package carpetddsaddition.mixin.feature.commandcamera;
 
 import org.spongepowered.asm.mixin.Mixin;
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ import net.minecraft.world.entity.LivingEntity;
 //$$ import org.spongepowered.asm.mixin.gen.Accessor;
 //#else
 import org.spongepowered.asm.mixin.Pseudo;
 //#endif
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ @Mixin(LivingEntity.class)
 //$$ public interface LivingEntityCameraAccessor {
 //$$     @Accessor("fallFlyTicks") int carpetDDSAddition$getFallFlyingTicks();

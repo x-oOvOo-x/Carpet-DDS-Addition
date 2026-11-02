@@ -6,14 +6,15 @@
  */
 package carpetddsaddition.feature.stonecuttercutsdeepslate;
 
-import carpetddsaddition.feature.stonecuttercutsdeepslate.compat.StonecutterCutsDeepslateCompat;
+import carpetddsaddition.feature.stonecuttercutsdeepslate.compat.StonecutterCutsDeepslateAvailabilityCompat;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.crafting.RecipeManager;
 
 public final class StonecutterCutsDeepslate {
     private StonecutterCutsDeepslate() {}
-    public static void onRecipeManagerApplied(RecipeManager manager){StonecutterCutsDeepslateCompat.onRecipeManagerApplied(manager);}
-    public static void refreshLegacyLifecycle(MinecraftServer server){StonecutterCutsDeepslateCompat.refreshLegacyLifecycle(server);}
-    public static void refresh(MinecraftServer server,boolean force){StonecutterCutsDeepslateCompat.refresh(server,force);}
-    public static void reset(){StonecutterCutsDeepslateCompat.reset();}
+    public static boolean enabled(){return StonecutterCutsDeepslateAvailabilityCompat.enabled();}
+    public static void onRecipeManagerApplied(RecipeManager manager){StonecutterCutsDeepslateAvailabilityCompat.onRecipeManagerApplied(manager);}
+    public static void refreshLegacyLifecycle(MinecraftServer server){StonecutterCutsDeepslateAvailabilityCompat.refreshLegacyLifecycle(server);}
+    public static void refresh(MinecraftServer server,boolean force){StonecutterCutsDeepslateAvailabilityCompat.refresh(server,force);}
+    public static void reset(){StonecutterCutsDeepslateAvailabilityCompat.reset();}
 }

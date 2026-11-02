@@ -73,6 +73,10 @@ public final class StonecutterCutsWoodCompat {
     //$$ private static List<RecipeHolder<?>> buildRecipes(RecipeManager manager,boolean enabled){
     //$$     List<RecipeHolder<?>> recipes=new ArrayList<RecipeHolder<?>>(manager.getRecipes()); recipes.removeIf(GENERATED_ENTRIES::contains); GENERATED_ENTRIES.clear(); if(enabled)addGeneratedRecipes(recipes); return recipes;
     //$$ }
+    //$$ public static void contribute(List<RecipeHolder<?>> recipes) {
+    //$$     GENERATED_ENTRIES.clear();
+    //$$     addGeneratedRecipes(recipes);
+    //$$ }
     //$$ private static void addGeneratedRecipes(List<RecipeHolder<?>> recipes){
     //$$     Set<ResourceKey<Recipe<?>>> usedIds=new HashSet<ResourceKey<Recipe<?>>>(); for(RecipeHolder<?> holder:recipes)usedIds.add(holder.id());
     //$$     for(WoodRecipeSpec spec:WoodRecipeCatalog.recipes()){

@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.feature.quickcontaineraccess.compat;
 
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 import java.util.IdentityHashMap;
 import java.util.Map;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -16,7 +16,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 final class QuickContainerAccessCloseDebounce {
     private QuickContainerAccessCloseDebounce() {}
 
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     static final long GRACE_NANOS = 300_000_000L;
     private static final Map<AbstractContainerMenu, Long> LAST_SOURCE_CLICK = new IdentityHashMap<>();
 

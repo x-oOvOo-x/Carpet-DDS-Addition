@@ -6,29 +6,27 @@
  */
 package carpetddsaddition.mixin.feature.directblockdrops;
 
-import carpetddsaddition.feature.directblockdrops.DirectBlockDrops;
 import carpetddsaddition.feature.directblockdrops.DirectDropContext;
+import carpetddsaddition.feature.directblockdrops.PendingDirectDropSupportCascade;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerPlayerGameMode;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ServerPlayerGameMode.class)
 public abstract class ServerPlayerGameModeMixin {
     @Shadow protected ServerPlayer player;
 
-    @Inject(method = "destroyBlock", at = @At("HEAD"))
-    private void carpetDDSAddition$beginDirectBlockDrops(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        if (DirectBlockDrops.enabled()) DirectDropContext.push(player);
-    }
-
-    // Unconditional: a context opened at HEAD must close even if the rule changes mid-call.
-    @Inject(method = "destroyBlock", at = @At("RETURN"))
-    private void carpetDDSAddition$endDirectBlockDrops(BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        DirectDropContext.pop();
+    /** RETURN injection is skipped by CCE update suppression and other exceptions. */
+    @WrapMethod(method = "destroyBlock")
+    private boolean carpetDDSAddition$scopedDirectBlockDrops(BlockPos pos, Operation<Boolean> original) {
+        try (DirectDropContext.Scope ignored = DirectDropContext.enter(player)) {
+            boolean broken = original.call(pos);
+            if (broken) PendingDirectDropSupportCascade.recordBreak(player, pos);
+            return broken;
+        }
     }
 }

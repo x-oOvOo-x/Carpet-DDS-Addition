@@ -1,0 +1,120 @@
+name: P4 Four-Node Mixin Audit
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'versions/**'
+      - 'build.gradle'
+      - 'common.gradle'
+      - 'settings.gradle'
+      - 'settings.json'
+      - 'config/**'
+      - '.github/workflows/p4-mixin-audit.yml'
+
+concurrency:
+  group: p4-mixin-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  four-node-mixin-audit:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: source-mixin-audit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: source-mixin-audit
+          clean: false
+
+      - name: Configure isolated Gradle home
+        shell: powershell
+        run: |
+          $drive = [System.IO.Path]::GetPathRoot($env:RUNNER_WORKSPACE)
+          $gradleHome = Join-Path $drive 'g\dds-mixin-p4'
+          New-Item -ItemType Directory -Force -Path $gradleHome | Out-Null
+          Remove-Item (Join-Path $gradleHome '.tmp') -Recurse -Force -ErrorAction SilentlyContinue
+          "GRADLE_USER_HOME=$gradleHome" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install Zulu JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Remember Zulu 17
+        shell: powershell
+        run: '"DDS_JAVA17_HOME=$env:JAVA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+
+      - name: Install Zulu JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      - name: Remember Zulu 21
+        shell: powershell
+        run: '"DDS_JAVA21_HOME=$env:JAVA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+
+      - name: Install Zulu JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '25'
+
+      - name: Remember Zulu 25
+        shell: powershell
+        run: '"DDS_JAVA25_HOME=$env:JAVA_HOME" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append'
+
+      - name: Restore Temurin 25 for Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Register and verify Azul game toolchains
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $homes = @($env:DDS_JAVA17_HOME, $env:DDS_JAVA21_HOME, $env:DDS_JAVA25_HOME)
+          foreach ($jdkHome in $homes) {
+            if (-not (Test-Path (Join-Path $jdkHome 'bin\java.exe') -PathType Leaf)) {
+              throw "Missing configured Azul JDK: $jdkHome"
+            }
+          }
+          $paths = ($homes | ForEach-Object { $_.Replace('\', '/') }) -join ','
+          $properties = Join-Path $env:GRADLE_USER_HOME 'gradle.properties'
+          # Windows PowerShell 5.1 Out-File -Encoding utf8 adds a BOM, corrupting
+          # Gradle's first property key. Write without a BOM so toolchains are discovered.
+          $encoding = [System.Text.UTF8Encoding]::new($false)
+          [System.IO.File]::WriteAllText($properties, "org.gradle.java.installations.paths=$paths`norg.gradle.java.installations.auto-download=false`n", $encoding)
+          Write-Host "Registered Azul JDKs: $paths"
+
+      - name: Audit 1.21.11 server and client Mixins
+        shell: cmd
+        run: gradlew.bat :1.21.11:runMixinAudit :1.21.11:runMixinAuditClient --stacktrace --no-parallel
+
+      - name: Audit 26.1.2 server and client Mixins
+        shell: cmd
+        run: gradlew.bat :26.1.2:runMixinAudit :26.1.2:runMixinAuditClient --stacktrace --no-parallel
+
+      - name: Audit 26.2 server and client Mixins
+        shell: cmd
+        run: gradlew.bat :26.2:runMixinAudit :26.2:runMixinAuditClient --stacktrace --no-parallel
+
+      - name: Audit 26.3 server and client Mixins
+        shell: cmd
+        run: gradlew.bat :26.3:runMixinAudit :26.3:runMixinAuditClient --stacktrace --no-parallel
+
+      - name: Stop Gradle daemons
+        if: always()
+        continue-on-error: true
+        shell: cmd
+        run: gradlew.bat --stop

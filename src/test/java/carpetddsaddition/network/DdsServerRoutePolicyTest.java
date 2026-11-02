@@ -90,50 +90,19 @@ final class DdsServerRoutePolicyTest {
     }
 
     @Test
-    void enabledFakePlayerActionRequiresExactAdvertisement() {
-        DdsPacketRegistry.C2SPacket packet =
-                packet(
-                        DdsFakePlayerPackets.ACTION_C2S
-                );
+    void enabledFakePlayerActionsRequireExactAdvertisement() {
+        for(String id:new String[]{DdsFakePlayerPackets.ACTION_C2S,DdsFakePlayerPackets.PROVIDER_ACTION_C2S}) {
+            DdsPacketRegistry.C2SPacket packet=packet(id);
+            assertFalse(DdsServerRoutePolicy.canDispatchEnabled(packet,Collections.emptySet()));
 
-        assertFalse(
-                DdsServerRoutePolicy
-                        .canDispatchEnabled(
-                                packet,
-                                Collections.emptySet()
-                        )
-        );
+            Set<String> unrelated=new LinkedHashSet<>();
+            unrelated.add(QuickContainerAccessPackets.STORAGE_CLICK_C2S);
+            assertFalse(DdsServerRoutePolicy.canDispatchEnabled(packet,unrelated));
 
-        Set<String> unrelated =
-                new LinkedHashSet<>();
-
-        unrelated.add(
-                QuickContainerAccessPackets
-                        .STORAGE_CLICK_C2S
-        );
-
-        assertFalse(
-                DdsServerRoutePolicy
-                        .canDispatchEnabled(
-                                packet,
-                                unrelated
-                        )
-        );
-
-        Set<String> advertised =
-                new LinkedHashSet<>();
-
-        advertised.add(
-                DdsFakePlayerPackets.ACTION_C2S
-        );
-
-        assertTrue(
-                DdsServerRoutePolicy
-                        .canDispatchEnabled(
-                                packet,
-                                advertised
-                        )
-        );
+            Set<String> advertised=new LinkedHashSet<>();
+            advertised.add(id);
+            assertTrue(DdsServerRoutePolicy.canDispatchEnabled(packet,advertised));
+        }
     }
 
     @Test
@@ -188,6 +157,10 @@ final class DdsServerRoutePolicyTest {
                                 advertisedGca
                         )
         );
+        advertisedGca.clear();
+        advertisedGca.add(DdsFakePlayerPackets.PROVIDER_ACTION_C2S);
+        assertFalse(DdsServerRoutePolicy.canDispatchDisabledGrace(
+                packet(DdsFakePlayerPackets.PROVIDER_ACTION_C2S), advertisedGca));
     }
 
     @Test

@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer;
 
-//#if MC >= 11904 && MC <= 260200
+//#if MC >= 11904 && MC <= 260300
 //$$ import carpet.fakes.ServerPlayerInterface;
 //$$ import carpet.helpers.EntityPlayerActionPack;
 //$$ import carpet.patches.EntityPlayerMPFake;

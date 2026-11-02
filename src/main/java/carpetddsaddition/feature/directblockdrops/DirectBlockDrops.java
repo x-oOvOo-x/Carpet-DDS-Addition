@@ -13,8 +13,11 @@ public final class DirectBlockDrops {
     public static boolean enabled() { return DDSRules.directBlockDrops(); }
     public static void onRuleChanged() { if (!enabled()) resetRuntimeState(); }
     public static void resetRuntimeState() {
+        DirectDropAttribution.revokeAll();
         PendingDirectDropTicks.clearAll();
+        PendingDirectDropSupportCascade.clearAll();
         DirectDropContext.clear();
         ScheduledDirectDropContext.clear();
+        DirectDropFallingContext.clear();
     }
 }

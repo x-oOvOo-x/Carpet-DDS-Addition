@@ -7,6 +7,7 @@
 package carpetddsaddition.feature.undoredo.network;
 
 //#if MC >= 12109
+//$$ import carpetddsaddition.feature.undoredo.UndoRedo;
 //$$ import carpetddsaddition.feature.undoredo.compat.UndoManager;
 //$$ import carpetddsaddition.network.DdsPacketRegistry;
 //$$
@@ -19,14 +20,18 @@ package carpetddsaddition.feature.undoredo.network;
 //$$                 UndoRedoPackets.UNDO_C2S,
 //$$                 (player, data) -> UndoManager.undo(player),
 //$$                 false,
-//$$                 false
+//$$                 false,
+//$$                 true,
+//$$                 player -> UndoRedo.enabled()
 //$$         );
 //$$
 //$$         DdsPacketRegistry.registerC2S(
 //$$                 UndoRedoPackets.REDO_C2S,
 //$$                 (player, data) -> UndoManager.redo(player),
 //$$                 false,
-//$$                 false
+//$$                 false,
+//$$                 true,
+//$$                 player -> UndoRedo.enabled()
 //$$         );
 //$$     }
 //$$ }

@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 
 //#if MC < 11800
-import carpetddsaddition.feature.directblockdrops.DirectDropContext;
+import carpetddsaddition.feature.directblockdrops.DirectDropAttribution;
 import carpetddsaddition.feature.directblockdrops.PendingDirectDropTicks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -41,10 +41,11 @@ public abstract class LegacyServerTickListMixin {
             at = @At("HEAD")
     )
     private void carpetDDSAddition$rememberLegacyDirectDropBlockTick(BlockPos pos, Object type, int delay, TickPriority priority, CallbackInfo ci) {
-        ServerPlayer player = DirectDropContext.getPlayer();
-        if (player == null || !(type instanceof Block)) return;
-        ServerLevel level = player.getLevel();
-        PendingDirectDropTicks.record(level, pos, (Block) type, delay, player);
+        if (!(type instanceof Block)) return;
+        DirectDropAttribution.Owner owner = DirectDropAttribution.ownerForSchedule(pos, (Block) type);
+        if (owner == null) return;
+        PendingDirectDropTicks.record(DirectDropAttribution.playerLevel(owner.player()),
+                pos, (Block) type, delay, owner.player());
     }
     //#endif
 }

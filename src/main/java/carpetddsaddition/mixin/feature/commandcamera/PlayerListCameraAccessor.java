@@ -8,7 +8,7 @@ package carpetddsaddition.mixin.feature.commandcamera;
 
 import org.spongepowered.asm.mixin.Mixin;
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.server.players.PlayerList;
 //$$ import org.spongepowered.asm.mixin.gen.Invoker;
@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 //#endif
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ @Mixin(PlayerList.class)
 //$$ public interface PlayerListCameraAccessor {
 //$$     @Invoker("save") void carpetDDSAddition$savePlayer(ServerPlayer player);

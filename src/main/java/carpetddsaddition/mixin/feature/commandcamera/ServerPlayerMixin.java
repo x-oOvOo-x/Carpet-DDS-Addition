@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.mixin.feature.commandcamera;
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ import carpetddsaddition.feature.commandcamera.compat.CommandCameraCompat;
 //$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.world.damagesource.DamageSource;
@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 
 /** Reasserts persistent Camera state and consumes void damage without deleting the session. */
 @SuppressWarnings("unused")
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ @Mixin(ServerPlayer.class)
 //$$ public abstract class ServerPlayerMixin {
 //$$     @Inject(method = "tick", at = @At("HEAD"))

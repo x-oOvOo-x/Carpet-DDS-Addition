@@ -26,6 +26,9 @@ public final class DdsLifecycle {
     public static void onReload(MinecraftServer server) {
         for (DdsLifecycleComponent component : components) component.onReload(server);
     }
+    public static void onTick(MinecraftServer server) {
+        for (DdsLifecycleComponent component : components) component.onTick(server);
+    }
     public static void onServerClosed(MinecraftServer server) {
         for (DdsLifecycleComponent component : components) component.onServerClosed(server);
     }

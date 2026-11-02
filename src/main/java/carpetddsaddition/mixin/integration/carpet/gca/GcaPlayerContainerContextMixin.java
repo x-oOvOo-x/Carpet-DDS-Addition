@@ -6,7 +6,8 @@
  */
 package carpetddsaddition.mixin.integration.carpet.gca;
 
-//#if MC >= 11904 && MC <= 260200
+//#if MC >= 11904 && MC <= 260300
+//$$ import carpetddsaddition.core.inventory.DdsCanonicalSlotMapping;
 //$$ import carpetddsaddition.core.inventory.DdsDirectSlotAccess;
 //$$ import carpetddsaddition.core.inventory.DdsInventoryOwnerView;
 //$$ import net.minecraft.server.level.ServerPlayer;
@@ -17,7 +18,7 @@ package carpetddsaddition.mixin.integration.carpet.gca;
 //$$
 //$$ @Pseudo
 //$$ @Mixin(targets = "dev.dubhe.gugle.carpet.tools.player.PlayerContainer", remap = false)
-//$$ public abstract class GcaPlayerContainerContextMixin implements DdsInventoryOwnerView, DdsDirectSlotAccess {
+//$$ public abstract class GcaPlayerContainerContextMixin implements DdsInventoryOwnerView, DdsDirectSlotAccess, DdsCanonicalSlotMapping {
 //$$     @Shadow protected ServerPlayer player;
 //$$     @Override public ServerPlayer ddsInventoryOwner() { return player; }
 //$$     @Override public Container ddsCanonicalContainer() {
@@ -26,7 +27,12 @@ package carpetddsaddition.mixin.integration.carpet.gca;
 //$$     @Override public boolean ddsAllowsDirectSlotAccess(int slot) {
 //$$         String name = getClass().getName();
 //$$         if (name.endsWith("PlayerInventoryContainer")) return slot == 7 || slot >= 18 && slot <= 53;
-//$$         return name.endsWith("PlayerEnderChestContainer") && slot >= 27;
+//$$         return ddsCanonicalSlot(slot) >= 0;
+//$$     }
+//$$     @Override public int ddsCanonicalSlot(int providerSlot) {
+//$$         if (!getClass().getName().endsWith("PlayerEnderChestContainer") || providerSlot < 27) return -1;
+//$$         int canonical = providerSlot - 27;
+//$$         return canonical < player.getEnderChestInventory().getContainerSize() ? canonical : -1;
 //$$     }
 //$$ }
 //#else

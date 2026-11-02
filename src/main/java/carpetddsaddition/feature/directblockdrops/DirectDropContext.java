@@ -23,6 +23,28 @@ public final class DirectDropContext {
         }
         stack.push(player);
     }
+    /** Closes precisely the stack created at entry, even if a rule reset happened. */
+    public static Scope enter(ServerPlayer player) {
+        if (!DirectBlockDrops.enabled() || player == null) return new Scope(null);
+        push(player);
+        DirectDropTrace.log("scope.open", "depth=" + PLAYERS.get().size());
+        return new Scope(PLAYERS.get());
+    }
+
+    public static final class Scope implements AutoCloseable {
+        private Deque<ServerPlayer> stack;
+        private Scope(Deque<ServerPlayer> stack) { this.stack = stack; }
+
+        @Override public void close() {
+            Deque<ServerPlayer> opened = stack;
+            stack = null;
+            if (opened != null && PLAYERS.get() == opened) {
+                pop();
+                DirectDropTrace.log("scope.close", "balanced");
+            }
+        }
+    }
+
     public static void pop() {
         Deque<ServerPlayer> stack = PLAYERS.get();
         if (stack == null || stack.isEmpty()) return;

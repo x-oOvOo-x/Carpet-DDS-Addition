@@ -2,76 +2,23 @@ import groovy.json.JsonSlurper
 
 pluginManagement {
     repositories {
-        maven {
-            url = 'https://maven.fabricmc.net/'
-        }
-
-        maven {
-            url = 'https://jitpack.io'
-
-            content {
-                includeGroupAndSubgroups('com.github')
-            }
-        }
-
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://jitpack.io'; content { includeGroupAndSubgroups('com.github') } }
         mavenCentral()
         gradlePluginPortal()
     }
-
     resolutionStrategy {
         eachPlugin {
-            if (requested.id.id == 'com.replaymod.preprocess') {
-                useModule(
-                        "com.github.x-oOvOo-x:preprocessor:${requested.version}"
-                )
-            }
+            if (requested.id.id == 'com.replaymod.preprocess') useModule("com.github.x-oOvOo-x:preprocessor:${requested.version}")
         }
     }
 }
 
-/*
- * Gradle toolchains first use locally installed JDKs. If a requested game
- * runtime is missing, the official Foojay resolver can provision a matching
- * JDK automatically.
- *
- * This does not choose the JVM that launches Gradle itself; JAVA_HOME/PATH
- * still do that before settings.gradle is evaluated.
- */
-plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
-}
+plugins { id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0' }
 
-/*
- * Apply shared per-version build overlays before common.gradle is evaluated.
- * CozyUI+ dependencies and registration stay isolated from the common server entrypoint.
- */
-def fakePlayerUiPackScript = file('gradle/fake-player-ui-resource-pack.gradle')
-def versionRunIsolationScript = file('gradle/version-run-isolation.gradle')
-gradle.beforeProject { p ->
-    if (p.path != ':') {
-        p.apply(from: fakePlayerUiPackScript)
-        p.apply(from: versionRunIsolationScript)
-    }
-}
+/* Shared per-version run isolation; fake-player client resources now belong to DDS Tweak. */
+def versionRunIsolationScript=file('gradle/version-run-isolation.gradle')
+gradle.beforeProject { p -> if(p.path!=':')p.apply(from:versionRunIsolationScript) }
 
-
-def cfg =
-        new JsonSlurper()
-                .parseText(
-                        file('settings.json').text
-                )
-
-for (String version : cfg.versions) {
-    include(":${version}")
-
-    def p =
-            project(":${version}")
-
-    p.projectDir =
-            file(
-                    "versions/${version}"
-            )
-
-    p.buildFileName =
-            '../../common.gradle'
-}
+def cfg=new JsonSlurper().parseText(file('settings.json').text)
+for(String version:cfg.versions){include(":${version}");def p=project(":${version}");p.projectDir=file("versions/${version}");p.buildFileName='../../common.gradle'}

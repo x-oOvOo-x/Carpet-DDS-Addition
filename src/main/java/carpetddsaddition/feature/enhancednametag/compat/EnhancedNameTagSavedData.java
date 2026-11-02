@@ -43,9 +43,11 @@ import net.minecraft.server.MinecraftServer;
 //#if MC >= 12005 && MC < 12105
 //$$ import net.minecraft.core.HolderLookup;
 //#endif
+//#if MC >= 12002
+//$$ import net.minecraft.util.datafix.DataFixTypes;
+//#endif
 //#if MC >= 12105
 //$$ import com.mojang.serialization.Codec;
-//$$ import net.minecraft.util.datafix.DataFixTypes;
 //$$ import net.minecraft.world.level.saveddata.SavedDataType;
 //#endif
 
@@ -122,7 +124,7 @@ public final class EnhancedNameTagSavedData {
 
     //#if MC >= 12005 && MC < 12105
     //$$ private static SavedData.Factory<EnhancedNameTagSavedData> factory() {
-    //$$     return new SavedData.Factory<>(EnhancedNameTagSavedData::new, EnhancedNameTagSavedData::loadWithRegistries, null);
+    //$$     return new SavedData.Factory<>(EnhancedNameTagSavedData::new, EnhancedNameTagSavedData::loadWithRegistries, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
     //$$ }
     //$$ private static EnhancedNameTagSavedData loadWithRegistries(CompoundTag tag, HolderLookup.Provider registries) {
     //$$     EnhancedNameTagSavedData data = new EnhancedNameTagSavedData();
@@ -137,7 +139,7 @@ public final class EnhancedNameTagSavedData {
 
     //#if MC >= 12002 && MC < 12005
     //$$ private static SavedData.Factory<EnhancedNameTagSavedData> factory() {
-    //$$     return new SavedData.Factory<>(EnhancedNameTagSavedData::new, EnhancedNameTagSavedData::loadFactoryLegacy, null);
+    //$$     return new SavedData.Factory<>(EnhancedNameTagSavedData::new, EnhancedNameTagSavedData::loadFactoryLegacy, DataFixTypes.SAVED_DATA_COMMAND_STORAGE);
     //$$ }
     //$$ private static EnhancedNameTagSavedData loadFactoryLegacy(CompoundTag tag) {
     //$$     EnhancedNameTagSavedData data = new EnhancedNameTagSavedData();

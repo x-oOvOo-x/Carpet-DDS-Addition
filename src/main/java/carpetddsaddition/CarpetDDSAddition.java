@@ -23,6 +23,9 @@ import carpet.CarpetServer;
 import carpetddsaddition.core.bootstrap.DdsNetworkBootstrap;
 import carpetddsaddition.core.bootstrap.DdsRuntimeBootstrap;
 import carpetddsaddition.core.mixin.DdsMixinAudit;
+import carpetddsaddition.core.network.DdsProtocolBaselineAudit;
+import carpetddsaddition.network.DdsFakePlayerIdentitySync;
+import net.minecraft.server.level.ServerPlayer;
 import carpetddsaddition.platform.carpet.CarpetExtensionCompat;
 import carpetddsaddition.platform.carpet.CarpetRuleCompat;
 import net.fabricmc.api.ModInitializer;
@@ -37,6 +40,8 @@ public final class CarpetDDSAddition extends CarpetExtensionCompat implements Mo
     public void onInitialize() {
         version = FabricLoader.getInstance().getModContainer(MOD_ID).orElseThrow(RuntimeException::new)
                 .getMetadata().getVersion().getFriendlyString();
+        CarpetRuleCompat.initialize(version);
+        DdsProtocolBaselineAudit.runIfRequested();
         DdsMixinAudit.runIfRequested();
         DdsNetworkBootstrap.initialize();
         DdsRuntimeBootstrap.initialize();
@@ -46,6 +51,8 @@ public final class CarpetDDSAddition extends CarpetExtensionCompat implements Mo
     }
 
     @Override public void onGameStarted() { CarpetRuleCompat.registerRules(); }
+    @Override public void onPlayerLoggedIn(ServerPlayer player) { DdsFakePlayerIdentitySync.onPlayerJoined(player); }
+    @Override public void onPlayerLoggedOut(ServerPlayer player) { DdsFakePlayerIdentitySync.onPlayerLeft(player); }
     public static String getVersion() { return version; }
     @Override public String version() { return version; }
 }

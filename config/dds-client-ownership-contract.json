@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "revision": 12,
+  "canonicalSource": "x-oOvOo-x/Carpet-DDS-Addition-Dev:config/dds-client-ownership-contract.json",
+  "logicalClientOwner": "dds-tweak",
+  "targets": [
+    {
+      "minecraft": "26.3",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "26.2",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "26.1.2",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.21.11",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": true
+    },
+    {
+      "minecraft": "1.21.10",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": true
+    },
+    {
+      "minecraft": "1.21.9",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.21.8",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": true
+    },
+    {
+      "minecraft": "1.21.5",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": true
+    },
+    {
+      "minecraft": "1.21.4",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": true
+    },
+    {
+      "minecraft": "1.21.3",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": true
+    },
+    {
+      "minecraft": "1.21.1",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": true
+    },
+    {
+      "minecraft": "1.20.6",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_CODEC",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": true
+    },
+    {
+      "minecraft": "1.20.4",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_READER_MAP",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.20.2",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "DDS_PAYLOAD_READER_MAP",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.20.1",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "LEGACY_CUSTOM_PAYLOAD",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.19.4",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "LEGACY_CUSTOM_PAYLOAD",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.18.2",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "LEGACY_CUSTOM_PAYLOAD",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.17.1",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "LEGACY_CUSTOM_PAYLOAD",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.16.5",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "LEGACY_CUSTOM_PAYLOAD",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.15.2",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "LEGACY_CUSTOM_PAYLOAD",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    },
+    {
+      "minecraft": "1.14.4",
+      "ddsStatus": "active",
+      "tweakNodeStatus": "active",
+      "wireMode": "LEGACY_CUSTOM_PAYLOAD",
+      "ddsPublishesTweakOwnership": true,
+      "pairedHandoffVerified": false
+    }
+  ]
+}

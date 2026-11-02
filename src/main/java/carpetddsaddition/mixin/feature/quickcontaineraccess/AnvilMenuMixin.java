@@ -9,7 +9,7 @@ package carpetddsaddition.mixin.feature.quickcontaineraccess;
 import carpetddsaddition.feature.quickcontaineraccess.compat.QuickContainerAccessCompat;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.AnvilMenu;
-//#if MC >= 11502 && MC <= 260200
+//#if MC >= 11502 && MC <= 260300
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.level.Level;
@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(AnvilMenu.class)
 public abstract class AnvilMenuMixin {
-    //#if MC >= 11502 && MC <= 260200
+    //#if MC >= 11502 && MC <= 260300
     @Redirect(
             method = "onTake",
             at = @At(value = "INVOKE",

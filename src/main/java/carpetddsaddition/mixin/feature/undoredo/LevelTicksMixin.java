@@ -7,6 +7,8 @@
 package carpetddsaddition.mixin.feature.undoredo;
 
 //#if MC >= 12109
+//$$ import carpetddsaddition.platform.minecraft.tick.DdsExecutingScheduledTick;
+//$$ import carpetddsaddition.feature.directblockdrops.DirectDropScheduledTickOwner;
 //$$ import carpetddsaddition.feature.undoredo.compat.UndoAsyncFreeze;
 //$$ import carpetddsaddition.feature.undoredo.compat.UndoAsyncOrigin;
 //$$ import carpetddsaddition.feature.undoredo.compat.UndoOriginAccess;
@@ -41,6 +43,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 //$$             return;
 //$$         }
 //$$         ScheduledTick<T> tick = alreadyRunThisTick.get(alreadyRunThisTick.size() - 1);
+//$$         try (DdsExecutingScheduledTick.Scope tickScope = DdsExecutingScheduledTick.enter(tick)) {
 //$$         long recordId = ((UndoOriginAccess) (Object) tick).dds$getUndoOriginId();
 //$$         if (recordId == 0L) {
 //$$             output.accept((BlockPos) pos, (T) type);
@@ -58,6 +61,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 //$$         try (UndoScope ignored = UndoAsyncOrigin.enterRecord(recordId)) {
 //$$             output.accept((BlockPos) pos, (T) type);
 //$$         }
+//$$         }
 //$$     }
 //$$
 //$$     private boolean dds$rescheduleWithPauseCompensation(LevelTicks<T> scheduler, ScheduledTick<T> tick,
@@ -71,6 +75,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 //$$                 tick.priority(), tick.subTickOrder());
 //$$         ((UndoOriginAccess) (Object) shifted).dds$setUndoOriginId(recordId);
 //$$         ((UndoScheduledTickAccess) (Object) shifted).dds$setUndoPauseBaseline(accumulatedPause);
+//$$         DirectDropScheduledTickOwner.copy(tick, shifted);
 //$$         scheduler.schedule(shifted);
 //$$         return true;
 //$$     }

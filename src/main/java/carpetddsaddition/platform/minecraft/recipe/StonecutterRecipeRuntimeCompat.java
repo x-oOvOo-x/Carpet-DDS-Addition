@@ -7,6 +7,14 @@
 package carpetddsaddition.platform.minecraft.recipe;
 
 import net.minecraft.server.MinecraftServer;
+//#if MC >= 260300
+//$$ import carpetddsaddition.mixin.platform.minecraft.recipe.RecipeMapInvoker;
+//$$ import com.google.common.collect.ImmutableMap;
+//$$ import com.google.common.collect.ImmutableMultimap;
+//$$ import net.minecraft.resources.ResourceKey;
+//$$ import net.minecraft.world.item.crafting.Recipe;
+//$$ import net.minecraft.world.item.crafting.RecipeType;
+//#endif
 //#if MC >= 11700
 //$$ import net.minecraft.world.item.crafting.RecipeManager;
 //#endif
@@ -28,7 +36,17 @@ public final class StonecutterRecipeRuntimeCompat {
     private StonecutterRecipeRuntimeCompat(){}
 
     //#if MC >= 12103
-    //$$ public static void replaceLoadedRecipes(RecipeManager manager,List<RecipeHolder<?>> recipes){((RecipeManagerBridge)(Object)manager).carpetDDSAddition$setRecipes(RecipeMap.create(recipes));}
+    //$$ public static void replaceLoadedRecipes(RecipeManager manager,List<RecipeHolder<?>> recipes){
+        //#if MC >= 260300
+        //$$     ImmutableMultimap.Builder<RecipeType<?>,RecipeHolder<?>> byType=ImmutableMultimap.builder();
+        //$$     ImmutableMap.Builder<ResourceKey<Recipe<?>>,RecipeHolder<?>> byKey=ImmutableMap.builder();
+        //$$     for(RecipeHolder<?> holder:recipes){byType.put(holder.value().getType(),holder);byKey.put(holder.id(),holder);}
+        //$$     RecipeMap map=RecipeMapInvoker.carpetDDSAddition$create(byType.build(),byKey.build());
+        //#else
+        //$$     RecipeMap map=RecipeMap.create(recipes);
+        //#endif
+    //$$     ((RecipeManagerBridge)(Object)manager).carpetDDSAddition$setRecipes(map);
+    //$$ }
     //#endif
 
     //#if MC >= 12002
@@ -44,7 +62,7 @@ public final class StonecutterRecipeRuntimeCompat {
     //$$ public static void replace(MinecraftServer server,RecipeManager manager,List<Recipe<?>> recipes){manager.replaceRecipes(recipes); syncPlayers(server);}
     //#endif
 
-    private static void syncPlayers(MinecraftServer server){
+    public static void syncPlayers(MinecraftServer server){
         if(server==null||server.getPlayerList()==null||server.getPlayerList().getPlayers().isEmpty())return;
         //#if MC >= 12103
         //$$ RecipeManager manager=server.getRecipeManager(); ClientboundUpdateRecipesPacket packet=new ClientboundUpdateRecipesPacket(manager.getSynchronizedItemProperties(),manager.getSynchronizedStonecutterRecipes());

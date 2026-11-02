@@ -10,6 +10,8 @@ import urllib.request
 import uuid
 from pathlib import Path
 
+from audit_release_artifacts import audit_release
+
 API_BASE = "https://minecraft.curseforge.com"
 USER_AGENT = "x-oOvOo-x/Carpet-DDS-Addition GitHub-Actions"
 CARPET_PROJECT_ID = 349239
@@ -89,7 +91,10 @@ def main():
     parser.add_argument("--release-dir", required=True, type=Path)
     parser.add_argument("--config", required=True, type=Path, help="Target -> Minecraft version-name mapping JSON")
     parser.add_argument("--changelog-file", type=Path)
+    parser.add_argument("--source-root", type=Path, default=Path(__file__).resolve().parents[1],
+                        help="source of this exact release tag (for historical republishing)")
     args = parser.parse_args()
+    audit_release(args.source_root, args.release_dir, production=True, version=args.version)
     token = os.environ.get("CURSEFORGE_TOKEN")
     if not token: raise RuntimeError("CURSEFORGE_TOKEN is not set")
     if not args.project.isdigit(): raise RuntimeError("--project must be a numeric CurseForge project ID")

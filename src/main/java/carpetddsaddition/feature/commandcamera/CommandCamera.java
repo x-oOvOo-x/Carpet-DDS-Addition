@@ -28,6 +28,12 @@ public final class CommandCamera {
     private static final Map<UUID, CameraState> STATES = new HashMap<>();
     private static final Map<UUID, UUID> FOLLOW_TARGETS = new HashMap<>();
     private static final Map<UUID, Integer> FOLLOW_ATTACH_DELAY = new HashMap<>();
+    private static final Map<UUID, FollowCameraRetry> FOLLOW_CAMERA_RETRIES = new HashMap<>();
+    private static final int FOLLOW_RETRY_INTERVAL_TICKS = 10;
+    private static final int FOLLOW_RETRY_PACKETS = 12;
+    private static final int FOLLOW_MISSING_TARGET_GRACE_TICKS = 200;
+    /** Viewer UUID -> consecutive ticks with no target in PlayerList; zero means target is transitioning. */
+    private static final Map<UUID, Integer> FOLLOW_SUSPENSIONS = new HashMap<>();
     private static final Map<UUID, Long> VOID_FEEDBACK_AT = new HashMap<>();
     private static Path sessionFile;
     private CommandCamera() {}
@@ -57,6 +63,8 @@ public final class CommandCamera {
     public static UUID followTarget(UUID playerId) { return FOLLOW_TARGETS.get(playerId); }
     public static void beginFollow(UUID playerId, UUID targetId, int attachDelayTicks) {
         FOLLOW_TARGETS.put(playerId, targetId);
+        FOLLOW_CAMERA_RETRIES.remove(playerId);
+        FOLLOW_SUSPENSIONS.remove(playerId);
         if (attachDelayTicks > 0) FOLLOW_ATTACH_DELAY.put(playerId, attachDelayTicks);
         else FOLLOW_ATTACH_DELAY.remove(playerId);
     }
@@ -70,9 +78,66 @@ public final class CommandCamera {
         else FOLLOW_ATTACH_DELAY.remove(playerId);
     }
     public static void clearFollowAttachDelay(UUID playerId) { FOLLOW_ATTACH_DELAY.remove(playerId); }
+
+    public static boolean isFollowSuspended(UUID playerId) { return FOLLOW_SUSPENSIONS.containsKey(playerId); }
+
+    /**
+     * The End exit credits remove a still-connected player from its level until respawn.
+     * Wait without a timeout while that player object remains online but removed.
+     * A truly missing player gets a bounded fallback if the logout callback was missed.
+     *
+     * @return true when the missing-target grace period expires.
+     */
+    public static boolean suspendFollow(UUID playerId, boolean targetMissing) {
+        Integer previous = FOLLOW_SUSPENSIONS.putIfAbsent(playerId, targetMissing ? 1 : 0);
+        if (previous == null) {
+            FOLLOW_ATTACH_DELAY.remove(playerId);
+            FOLLOW_CAMERA_RETRIES.remove(playerId);
+            return false;
+        }
+        int missingTicks = targetMissing ? (previous > 0 ? previous + 1 : 1) : 0;
+        FOLLOW_SUSPENSIONS.put(playerId, missingTicks);
+        return missingTicks >= FOLLOW_MISSING_TARGET_GRACE_TICKS;
+    }
+
+    /** The target is usable again: reacquire its current entity instance after a short attach delay. */
+    public static boolean resumeFollow(UUID playerId, int attachDelayTicks) {
+        if (FOLLOW_SUSPENSIONS.remove(playerId) == null) return false;
+        setFollowAttachDelay(playerId, attachDelayTicks);
+        return true;
+    }
+
+    /** Resend vanilla camera packets briefly after an attach; server camera identity is not a client acknowledgement. */
+    public static void armFollowCameraRecovery(UUID playerId) {
+        if (isFollowing(playerId)) FOLLOW_CAMERA_RETRIES.put(playerId, new FollowCameraRetry());
+    }
+    public static boolean shouldResendFollowCamera(UUID playerId) {
+        FollowCameraRetry retry = FOLLOW_CAMERA_RETRIES.get(playerId);
+        if (retry == null) return false;
+        boolean resend = retry.tick();
+        if (retry.exhausted()) FOLLOW_CAMERA_RETRIES.remove(playerId);
+        return resend;
+    }
+
+    private static final class FollowCameraRetry {
+        private int ticksUntilResend = FOLLOW_RETRY_INTERVAL_TICKS;
+        private int packetsRemaining = FOLLOW_RETRY_PACKETS;
+
+        private boolean tick() {
+            if (--ticksUntilResend > 0) return false;
+            ticksUntilResend = FOLLOW_RETRY_INTERVAL_TICKS;
+            packetsRemaining--;
+            return true;
+        }
+
+        private boolean exhausted() { return packetsRemaining == 0; }
+    }
+
     public static boolean clearFollow(UUID playerId) {
         boolean removed = FOLLOW_TARGETS.remove(playerId) != null;
         FOLLOW_ATTACH_DELAY.remove(playerId);
+        FOLLOW_CAMERA_RETRIES.remove(playerId);
+        FOLLOW_SUSPENSIONS.remove(playerId);
         return removed;
     }
     public static void clearRuntime(UUID playerId) {
@@ -94,6 +159,8 @@ public final class CommandCamera {
         STATES.clear();
         FOLLOW_TARGETS.clear();
         FOLLOW_ATTACH_DELAY.clear();
+        FOLLOW_CAMERA_RETRIES.clear();
+        FOLLOW_SUSPENSIONS.clear();
         VOID_FEEDBACK_AT.clear();
         sessionFile = file;
         if (!Files.isRegularFile(file)) return;
@@ -121,6 +188,8 @@ public final class CommandCamera {
         STATES.clear();
         FOLLOW_TARGETS.clear();
         FOLLOW_ATTACH_DELAY.clear();
+        FOLLOW_CAMERA_RETRIES.clear();
+        FOLLOW_SUSPENSIONS.clear();
         VOID_FEEDBACK_AT.clear();
         sessionFile = null;
     }

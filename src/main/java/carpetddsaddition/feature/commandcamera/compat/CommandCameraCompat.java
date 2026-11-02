@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.feature.commandcamera.compat;
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ import carpetddsaddition.generated.DDSRules;
 //$$ import carpetddsaddition.feature.commandcamera.CameraState;
 //$$ import carpetddsaddition.feature.commandcamera.CommandCamera;
@@ -16,6 +16,15 @@ package carpetddsaddition.feature.commandcamera.compat;
 //$$ import net.minecraft.network.chat.Component;
 //$$ import net.minecraft.server.level.ServerLevel;
 //$$ import net.minecraft.server.level.ServerPlayer;
+//$$ import net.minecraft.network.protocol.game.ClientboundSetCameraPacket;
+//$$ import net.minecraft.core.BlockPos;
+//$$ import net.minecraft.util.Mth;
+//#if MC <= 12110
+//$$ import net.minecraft.world.level.GameRules;
+//#else
+//$$ import net.minecraft.world.level.gamerules.GameRules;
+//#endif
+//$$ import net.minecraft.world.level.Level;
 //$$ import net.minecraft.world.damagesource.DamageSource;
 //#if MC >= 11904
 //$$ import net.minecraft.world.damagesource.DamageTypes;
@@ -31,13 +40,13 @@ package carpetddsaddition.feature.commandcamera.compat;
 
 /** Minecraft-version adapter for the DDS safe Camera session. */
 public final class CommandCameraCompat {
-    //#if MC >= 11601 && MC <= 260200
+    //#if MC >= 11601 && MC <= 260300
     //$$ private static final int FOLLOW_ATTACH_DELAY_TICKS = 2;
     //$$ private static final double TELEPORT_EPSILON_SQUARED = 1.0E-6D;
     //#endif
     private CommandCameraCompat() {}
 
-    //#if MC >= 11601 && MC <= 260200
+    //#if MC >= 11601 && MC <= 260300
     //$$ public static boolean isEnabled() { return DDSRules.commandCamera(); }
     //$$ public static boolean isCamera(ServerPlayer player) {
     //$$     CommandCameraPersistenceCompat.loadIfNeeded(player);
@@ -73,6 +82,23 @@ public final class CommandCameraCompat {
     //$$     }
     //$$     return returnToCameraOrigin(player, true) ? 1 : 0;
     //$$ }
+    //$$ public static int tp(ServerPlayer player, Vec3 target) {
+    //$$     return tp(player, levelOf(player), target);
+    //$$ }
+    //$$ public static int tp(ServerPlayer player, ServerPlayer target) {
+    //$$     if (!ensureCameraCommandReady(player)) return 0;
+    //$$     return teleportActiveCamera(
+    //$$             player,
+    //$$             levelOf(target),
+    //$$             new Vec3(target.getX(), target.getY(), target.getZ()),
+    //$$             yawOf(target),
+    //$$             pitchOf(target)
+    //$$     ) ? 1 : 0;
+    //$$ }
+    //$$ public static int tp(ServerPlayer player, ServerLevel destination, Vec3 target) {
+    //$$     if (!ensureCameraCommandReady(player)) return 0;
+    //$$     return teleportActiveCamera(player, destination, target, yawOf(player), pitchOf(player)) ? 1 : 0;
+    //$$ }
     //$$ public static int follow(ServerPlayer player, ServerPlayer target) {
     //$$     if (target == player) {
     //$$         actionBar(player, "不能跟随自己");
@@ -82,23 +108,26 @@ public final class CommandCameraCompat {
     //$$         actionBar(player, "目标玩家当前不可跟随");
     //$$         return 0;
     //$$     }
+    //$$     if (!ensureCameraCommandReady(player)) return 0;
+    //$$     return beginFollow(player, target) ? 1 : 0;
+    //$$ }
+    //$$ private static boolean ensureCameraCommandReady(ServerPlayer player) {
     //$$     if (!isCamera(player)) {
     //$$         if (!isEnabled()) {
     //$$             actionBar(player, "commandCamera 规则未开启");
-    //$$             return 0;
+    //$$             return false;
     //$$         }
-    //$$         if (!enter(player, true)) return 0;
-    //$$     } else {
-    //$$         if (!isEnabled()) {
-    //$$             actionBar(player, "commandCamera 已关闭，只能返回或退出");
-    //$$             return 0;
-    //$$         }
-    //$$         if (gameModeOf(player) != GameType.SPECTATOR) {
-    //$$             actionBar(player, "Camera 状态异常，请使用 /c 恢复");
-    //$$             return 0;
-    //$$         }
+    //$$         return enter(player, true);
     //$$     }
-    //$$     return beginFollow(player, target) ? 1 : 0;
+    //$$     if (!isEnabled()) {
+    //$$         actionBar(player, "commandCamera 已关闭，只能返回或退出");
+    //$$         return false;
+    //$$     }
+    //$$     if (gameModeOf(player) != GameType.SPECTATOR) {
+    //$$         actionBar(player, "Camera 状态异常，请使用 /c 恢复");
+    //$$         return false;
+    //$$     }
+    //$$     return true;
     //$$ }
     //$$
     //$$ private static boolean enter(ServerPlayer player, boolean feedback) {
@@ -185,9 +214,20 @@ public final class CommandCameraCompat {
     //$$     ServerLevel playerLevel = levelOf(player);
     //$$     ServerPlayer target = playerLevel.getServer().getPlayerList().getPlayer(targetId);
     //$$     if (target == null || !target.isAlive()) {
-    //$$         stopFollowing(player, true);
+    //$$         // Exiting the End removes the old player entity for credits before respawn creates a new one.
+    //$$         // Its UUID is still online: keep Follow pending rather than treating removal as a logout.
+    //$$         if (target != null && target.isDeadOrDying()) {
+    //$$             stopFollowing(player, true);
+    //$$             return;
+    //$$         }
+    //$$         if (CommandCamera.suspendFollow(playerId, target == null)) {
+    //$$             stopFollowing(player, true);
+    //$$             return;
+    //$$         }
+    //$$         if (player.getCamera() != player) player.setCamera(player);
     //$$         return;
     //$$     }
+    //$$     CommandCamera.resumeFollow(playerId, FOLLOW_ATTACH_DELAY_TICKS);
     //$$     ServerLevel targetLevel = levelOf(target);
     //$$     if (playerLevel != targetLevel) {
     //$$         player.setCamera(player);
@@ -206,17 +246,29 @@ public final class CommandCameraCompat {
     //$$     if (delay == 0) {
     //$$         CommandCamera.clearFollowAttachDelay(playerId);
     //$$         player.setCamera(target);
+    //$$         CommandCamera.armFollowCameraRecovery(playerId);
     //$$         return;
     //$$     }
-    //$$     if (player.getCamera() != target) player.setCamera(target);
+    //$$     if (player.getCamera() != target) {
+    //$$         player.setCamera(target);
+    //$$         CommandCamera.armFollowCameraRecovery(playerId);
+    //$$     } else if (CommandCamera.shouldResendFollowCamera(playerId)) {
+    //$$         // Vanilla ignores camera packets whose target entity is not yet present client-side.
+    //$$         // Resending is idempotent; toggling back to self here would visibly interrupt a working follow.
+    //$$         player.connection.send(new ClientboundSetCameraPacket(target));
+    //$$     }
     //$$ }
     //$$ public static boolean handleFollowInput(ServerPlayer player, boolean shiftDown) {
     //$$     if (!CommandCamera.hasFollowTargets() || !CommandCamera.isFollowing(player.getUUID())) return false;
-    //$$     if (shiftDown) stopFollowing(player, false);
-    //$$     return true;
+    //$$     if (shiftDown) {
+    //$$         stopFollowing(player, false);
+    //$$         return true;
+    //$$     }
+    //$$     return !CommandCamera.isFollowSuspended(player.getUUID());
     //$$ }
     //$$ public static boolean shouldBlockMovement(ServerPlayer player) {
-    //$$     return CommandCamera.hasFollowTargets() && CommandCamera.isFollowing(player.getUUID());
+    //$$     UUID playerId = player.getUUID();
+    //$$     return CommandCamera.isFollowing(playerId) && !CommandCamera.isFollowSuspended(playerId);
     //$$ }
     //$$ public static void stopFollowing(ServerPlayer player, boolean targetUnavailableFeedback) {
     //$$     if (!CommandCamera.clearFollow(player.getUUID())) return;
@@ -318,7 +370,15 @@ public final class CommandCameraCompat {
     //$$         default: return GameType.SURVIVAL;
     //$$     }
     //$$ }
-    //$$ public static void onPlayerDisconnect(ServerPlayer player) { CommandCamera.clearRuntime(player.getUUID()); }
+    //$$ public static void onPlayerDisconnect(ServerPlayer player) {
+    //$$     UUID playerId = player.getUUID();
+    //$$     CommandCamera.clearRuntime(playerId);
+    //$$     // A real logout, unlike End credits, must release every viewer immediately.
+    //$$     if (!CommandCamera.hasFollowTargets()) return;
+    //$$     for (ServerPlayer viewer : levelOf(player).getServer().getPlayerList().getPlayers())
+    //$$         if (playerId.equals(CommandCamera.followTarget(viewer.getUUID())))
+    //$$             stopFollowing(viewer, true);
+    //$$ }
     //$$ private static boolean isVoidDamage(DamageSource source) {
     //#if MC <= 11903
     //$$     return source == DamageSource.OUT_OF_WORLD;
@@ -403,6 +463,50 @@ public final class CommandCameraCompat {
     //$$     return level.dimension().location().toString();
     //#else
     //$$     return level.dimension().identifier().toString();
+    //#endif
+    //$$ }
+    //$$ static boolean teleportActiveCamera(
+    //$$         ServerPlayer player,
+    //$$         ServerLevel destination,
+    //$$         Vec3 target,
+    //$$         float yaw,
+    //$$         float pitch
+    //$$ ) {
+    //$$     if (!prepareCameraTeleport(player, destination, target.x, target.y, target.z)) return false;
+    //$$     stopFollowing(player, false);
+    //$$     player.setCamera(player);
+    //$$     if (!teleportPlayer(player, destination, target.x, target.y, target.z, yaw, pitch)) {
+    //$$         actionBar(player, "无法传送到目标位置");
+    //$$         return false;
+    //$$     }
+    //$$     player.setDeltaMovement(Vec3.ZERO);
+    //$$     return true;
+    //$$ }
+    //$$ static boolean prepareCameraTeleport(ServerPlayer player, ServerLevel destination, double x, double y, double z) {
+    //$$     BlockPos targetPos = new BlockPos(Mth.floor(x), Mth.floor(y), Mth.floor(z));
+    //$$     if (!Level.isInSpawnableBounds(targetPos)) {
+    //$$         actionBar(player, "目标位置超出有效范围，无法传送");
+    //$$         return false;
+    //$$     }
+    //$$     int chunkX = targetPos.getX() >> 4, chunkZ = targetPos.getZ() >> 4;
+    //$$     if (destination.getChunkSource().hasChunk(chunkX, chunkZ)) return true;
+    //$$     if (!spectatorsGenerateChunks(destination)) {
+    //$$         actionBar(player, "旁观者区块生成已关闭，目标区块未加载");
+    //$$         return false;
+    //$$     }
+    //$$     try {
+    //$$         destination.getChunk(chunkX, chunkZ);
+    //$$         return true;
+    //$$     } catch (RuntimeException exception) {
+    //$$         actionBar(player, "目标区块加载失败，无法传送");
+    //$$         return false;
+    //$$     }
+    //$$ }
+    //$$ private static boolean spectatorsGenerateChunks(ServerLevel level) {
+    //#if MC <= 12110
+    //$$     return level.getGameRules().getBoolean(GameRules.RULE_SPECTATORSGENERATECHUNKS);
+    //#else
+    //$$     return level.getGameRules().get(GameRules.SPECTATORS_GENERATE_CHUNKS);
     //#endif
     //$$ }
     //$$ static boolean teleportPlayer(ServerPlayer player, ServerLevel destination, double x, double y, double z, float yaw, float pitch) {

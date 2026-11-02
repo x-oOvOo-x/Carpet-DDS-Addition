@@ -7,23 +7,30 @@
 package carpetddsaddition.feature.directblockdrops;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.UUID;
-import java.util.WeakHashMap;
 
+/** Legacy scheduler adapter (modern 1.21.9+ ticks carry owner on the accepted object). */
 public final class PendingDirectDropTicks {
     private static final long CLEANUP_INTERVAL_TICKS = 20L;
-    /* Weak world keys never keep a closed integrated-server world alive; entries retain only player UUIDs. */
-    private static final Map<ServerLevel, WorldEntries> PENDING = new WeakHashMap<>();
+    // Owner is a strong session reference: worlds must be released explicitly at server close.
+    private static final Map<ServerLevel, WorldEntries> PENDING = new IdentityHashMap<>();
+
     private PendingDirectDropTicks() {}
 
     public static void record(ServerLevel level, BlockPos pos, Block block, int delay, ServerPlayer player) {
-        if (!DirectBlockDrops.enabled() || level == null || pos == null || block == null || player == null) return;
+        if (level == null || pos == null || block == null || player == null) return;
+        DirectDropAttribution.Owner owner = DirectDropAttribution.ownerForSchedule(pos, block);
+        if (owner == null || owner.player() != player
+                || !DirectDropAttribution.valid(player, level, owner.startTick(), owner.generation())) return;
+        // On older schedulers HEAD is before deduplication: never claim an existing natural tick.
+        if (level.getBlockTicks().hasScheduledTick(pos, block)) return;
         WorldEntries world = PENDING.get(level);
         if (world == null) {
             world = new WorldEntries();
@@ -31,13 +38,14 @@ public final class PendingDirectDropTicks {
         }
         long now = level.getGameTime();
         world.cleanupIfDue(now);
-        // Vanilla deduplicates equal scheduled block ticks, so the first attribution must win as well.
         Key key = new Key(pos, block);
         if (world.entries.containsKey(key)) return;
-        world.entries.put(key, new Entry(player.getUUID(), now + Math.max(delay, 0) + 20L));
+        long expiry = Math.min(now + Math.max(delay, 0) + 20L,
+                owner.startTick() + DirectDropAttribution.MAX_CHAIN_TICKS);
+        world.entries.put(key, new Entry(player, owner.startTick(), expiry, owner.generation()));
     }
 
-    public static ServerPlayer consume(ServerLevel level, BlockPos pos, Block block) {
+    public static DirectDropAttribution.Owner consumeOwner(ServerLevel level, BlockPos pos, Block block) {
         if (!DirectBlockDrops.enabled() || level == null || pos == null || block == null) return null;
         WorldEntries world = PENDING.get(level);
         if (world == null) return null;
@@ -45,7 +53,18 @@ public final class PendingDirectDropTicks {
         world.cleanupIfDue(now);
         Entry entry = world.entries.remove(new Key(pos, block));
         if (world.entries.isEmpty()) PENDING.remove(level);
-        return entry == null || entry.expiresAt < now ? null : level.getServer().getPlayerList().getPlayer(entry.playerId);
+        if (entry == null || entry.expiresAt < now
+                || !DirectDropAttribution.valid(entry.player, level, entry.startTick, entry.generation)) return null;
+        return new DirectDropAttribution.Owner(entry.player, entry.startTick, entry.generation);
+    }
+
+    public static void cleanup(MinecraftServer server) {
+        for (Iterator<Map.Entry<ServerLevel, WorldEntries>> it = PENDING.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<ServerLevel, WorldEntries> entry = it.next();
+            if (entry.getKey().getServer() != server) continue;
+            entry.getValue().cleanupIfDue(entry.getKey().getGameTime());
+            if (entry.getValue().entries.isEmpty()) it.remove();
+        }
     }
 
     public static void clearAll() { PENDING.clear(); }
@@ -53,27 +72,37 @@ public final class PendingDirectDropTicks {
     private static final class WorldEntries {
         private final Map<Key, Entry> entries = new HashMap<>();
         private long nextCleanupTick = Long.MIN_VALUE;
+
         private void cleanupIfDue(long now) {
             if (now < nextCleanupTick) return;
             nextCleanupTick = now + CLEANUP_INTERVAL_TICKS;
-            Iterator<Map.Entry<Key, Entry>> iterator = entries.entrySet().iterator();
-            while (iterator.hasNext()) if (iterator.next().getValue().expiresAt < now) iterator.remove();
+            Iterator<Map.Entry<Key, Entry>> it = entries.entrySet().iterator();
+            while (it.hasNext()) {
+                Entry entry = it.next().getValue();
+                if (entry.expiresAt < now
+                        || !DirectDropAttribution.valid(entry.player, null, entry.startTick, entry.generation)) it.remove();
+            }
         }
     }
 
     private static final class Entry {
-        private final UUID playerId;
-        private final long expiresAt;
-        private Entry(UUID playerId, long expiresAt) {
-            this.playerId = playerId;
+        final ServerPlayer player;
+        final long startTick;
+        final long expiresAt;
+        final long generation;
+
+        Entry(ServerPlayer player, long startTick, long expiresAt, long generation) {
+            this.player = player;
+            this.startTick = startTick;
             this.expiresAt = expiresAt;
+            this.generation = generation;
         }
     }
 
     private static final class Key {
         private final BlockPos pos;
         private final Block block;
-        private Key(BlockPos pos, Block block) {
+        Key(BlockPos pos, Block block) {
             this.pos = pos.immutable();
             this.block = block;
         }
@@ -83,6 +112,8 @@ public final class PendingDirectDropTicks {
             Key other = (Key) object;
             return block == other.block && pos.equals(other.pos);
         }
-        @Override public int hashCode() { return 31 * pos.hashCode() + System.identityHashCode(block); }
+        @Override public int hashCode() {
+            return 31 * pos.hashCode() + System.identityHashCode(block);
+        }
     }
 }

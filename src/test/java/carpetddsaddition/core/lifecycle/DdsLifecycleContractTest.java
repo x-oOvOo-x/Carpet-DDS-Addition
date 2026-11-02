@@ -17,14 +17,16 @@ final class DdsLifecycleContractTest {
         DdsLifecycle.configure(component("a", calls), component("b", calls));
         DdsLifecycle.onServerLoaded(null);
         DdsLifecycle.onReload(null);
+        DdsLifecycle.onTick(null);
         DdsLifecycle.onServerClosed(null);
-        assertEquals(List.of("a:load", "b:load", "a:reload", "b:reload", "a:close", "b:close"), calls);
+        assertEquals(List.of("a:load", "b:load", "a:reload", "b:reload", "a:tick", "b:tick", "a:close", "b:close"), calls);
     }
 
     private static DdsLifecycleComponent component(String name, List<String> calls) {
         return new DdsLifecycleComponent() {
             @Override public void onServerLoaded(net.minecraft.server.MinecraftServer server) { calls.add(name + ":load"); }
             @Override public void onReload(net.minecraft.server.MinecraftServer server) { calls.add(name + ":reload"); }
+            @Override public void onTick(net.minecraft.server.MinecraftServer server) { calls.add(name + ":tick"); }
             @Override public void onServerClosed(net.minecraft.server.MinecraftServer server) { calls.add(name + ":close"); }
         };
     }

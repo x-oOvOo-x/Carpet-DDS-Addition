@@ -8,7 +8,7 @@ package carpetddsaddition.feature.quickcontaineraccess.compat;
 
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Items;
@@ -23,7 +23,7 @@ public final class QuickContainerAccessItems {
     public enum MenuKind { SHULKER, ENDER_CHEST, CRAFTING_TABLE, STONECUTTER, ANVIL, LOOM, CARTOGRAPHY_TABLE, GRINDSTONE, SMITHING_TABLE, ENCHANTING_TABLE }
 
     public static MenuKind kindOf(ItemStack stack) {
-        //#if MC >= 11404 && MC <= 260200
+        //#if MC >= 11404 && MC <= 260300
         if (stack.isEmpty()) return null;
         if (isShulker(stack)) return MenuKind.SHULKER;
         if (isItem(stack, Items.ENDER_CHEST)) return MenuKind.ENDER_CHEST;
@@ -46,14 +46,14 @@ public final class QuickContainerAccessItems {
     }
 
     public static boolean canOpenInHand(MenuKind kind, ItemStack stack) {
-        //#if MC >= 11404 && MC <= 260200
+        //#if MC >= 11404 && MC <= 260300
         return kind != null && (kind != MenuKind.SHULKER && kind != MenuKind.ANVIL || stack.getCount() == 1);
         //#else
         //$$ return false;
         //#endif
     }
     public static boolean isStorageHost(ItemStack stack) {
-        //#if MC >= 11404 && MC <= 260200
+        //#if MC >= 11404 && MC <= 260300
         return !stack.isEmpty() && (isShulker(stack) || isItem(stack, Items.ENDER_CHEST));
         //#else
         //$$ return false;
@@ -75,7 +75,7 @@ public final class QuickContainerAccessItems {
         //#endif
     }
     public static boolean isShulker(ItemStack stack) {
-        //#if MC >= 11404 && MC <= 260200
+        //#if MC >= 11404 && MC <= 260300
         return stack.getItem() instanceof BlockItem && Block.byItem(stack.getItem()) instanceof ShulkerBoxBlock;
         //#else
         //$$ return false;

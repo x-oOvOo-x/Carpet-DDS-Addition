@@ -6,8 +6,7 @@
  */
 package carpetddsaddition.integration.gca.fakeplayer;
 
-//#if MC >= 11904 && MC <= 260200
-//$$ import carpetddsaddition.integration.gca.fakeplayer.network.DdsFakePlayerServerNetwork;
+//#if MC >= 11904 && MC <= 260300
 //$$ import net.fabricmc.loader.api.FabricLoader;
 //$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.world.item.Items;
@@ -20,23 +19,24 @@ package carpetddsaddition.integration.gca.fakeplayer;
 //$$     private static final Field OPEN_ENDER_CHEST_RULE_FIELD = resolveRuleField("openFakePlayerEnderChest");
 //$$     private DdsGcaFakePlayerBridge() {}
 //$$
-//$$     public static boolean canEnhanceInventory(ServerPlayer viewer) {
-//$$         return clientSupportsEnhancedMenu(viewer) && isGcaInventoryRuleEnabled();
-//$$     }
-//$$     public static boolean canEnhanceEnderChest(ServerPlayer viewer) {
-//$$         return clientSupportsEnhancedMenu(viewer) && shouldOpenGcaEnderChest(viewer);
-//$$     }
-//$$     private static boolean clientSupportsEnhancedMenu(ServerPlayer viewer) {
-//$$         return SAFE_DIRECT_INVENTORY && DdsFakePlayerServerNetwork.supportsEnhancedMenu(viewer);
-//$$     }
-//$$
 //$$     /** Mirrors GCA's openFakePlayerEnderChest rule semantics at interaction time. */
 //$$     public static boolean shouldOpenGcaEnderChest(ServerPlayer viewer) {
-//$$         if (!SAFE_DIRECT_INVENTORY) return false;
+//$$         return SAFE_DIRECT_INVENTORY && gcaEnderChestRuleAllows(viewer);
+//$$     }
+//$$
+//$$     /** Suppresses only the known GCA inventory-controller fallback after an Ender intent is denied. */
+//$$     public static boolean shouldSuppressSneakControllerFallback(ServerPlayer viewer) {
+//$$         return SAFE_DIRECT_INVENTORY
+//$$                 && OPEN_ENDER_CHEST_RULE_FIELD != null
+//$$                 && isGcaInventoryRuleEnabled()
+//$$                 && !gcaEnderChestRuleAllows(viewer);
+//$$     }
+//$$
+//$$     private static boolean gcaEnderChestRuleAllows(ServerPlayer viewer) {
 //$$         String value = readStringRule(OPEN_ENDER_CHEST_RULE_FIELD);
 //$$         if ("true".equals(value)) return true;
 //$$         if (!"ender_chest".equals(value)) return false;
-//$$         return viewer.getMainHandItem().is(Items.ENDER_CHEST) || viewer.getOffhandItem().is(Items.ENDER_CHEST);
+//$$         return viewer != null && (viewer.getMainHandItem().is(Items.ENDER_CHEST) || viewer.getOffhandItem().is(Items.ENDER_CHEST));
 //$$     }
 //$$
 //$$     public static boolean isGcaInventoryRuleEnabled() {

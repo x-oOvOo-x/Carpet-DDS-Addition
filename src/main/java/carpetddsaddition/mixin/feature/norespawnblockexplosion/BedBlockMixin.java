@@ -25,7 +25,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(BedBlock.class)
 public abstract class BedBlockMixin {
-    //#if MC >= 12005
+    //#if MC >= 260300
+    //$$ @Inject(method = "destroyOnUse", at = @At("HEAD"), cancellable = true)
+    //$$ private void carpetDDSAddition$preventBedExplosion26x(BlockState state, Level level, BlockPos pos,
+    //$$         Player player, CallbackInfoReturnable<InteractionResult> cir) {
+    //$$     carpetDDSAddition$tryPreventExplosion(level, player, cir);
+    //$$ }
+    //#elseif MC >= 12005
     //$$ @Inject(
     //$$         method = "useWithoutItem",
     //$$         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;removeBlock(Lnet/minecraft/core/BlockPos;Z)Z", ordinal = 0),

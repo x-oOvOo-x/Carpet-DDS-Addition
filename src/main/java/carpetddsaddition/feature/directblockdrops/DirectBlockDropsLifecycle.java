@@ -14,5 +14,9 @@ public final class DirectBlockDropsLifecycle implements DdsLifecycleComponent {
     public static final DirectBlockDropsLifecycle INSTANCE = new DirectBlockDropsLifecycle();
     private DirectBlockDropsLifecycle() {}
     @Override public void onServerLoaded(MinecraftServer server) { DirectBlockDrops.resetRuntimeState(); }
+    @Override public void onTick(MinecraftServer server) {
+        PendingDirectDropTicks.cleanup(server);
+        PendingDirectDropSupportCascade.cleanup(server);
+    }
     @Override public void onServerClosed(MinecraftServer server) { DirectBlockDrops.resetRuntimeState(); }
 }

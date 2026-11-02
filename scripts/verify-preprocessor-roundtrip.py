@@ -17,7 +17,7 @@ SETTINGS_FILE = ROOT / "settings.json"
 MAIN_PROJECT_FILE = ROOT / "versions" / "mainProject"
 VERIFY_FRAMEWORK_SCRIPT = ROOT / "scripts" / "verify-framework.py"
 
-DEFAULT_TARGET = "26.2"
+DEFAULT_TARGET = "26.3"
 
 
 class VerificationError(RuntimeError):
@@ -242,6 +242,12 @@ def require_clean_roundtrip_result() -> None:
 
     if stat:
         print(stat, end="")
+
+    # Preserve the exact changed lines in failed CI logs so mapping drift can be diagnosed.
+    diff = git_output("-c", "core.safecrlf=false", "diff", "--")
+    if diff:
+        print("\nTracked diff (truncated to 16000 characters):\n")
+        print(diff[:16000])
 
     raise VerificationError(
         "Preprocessor round-trip is not reversible."

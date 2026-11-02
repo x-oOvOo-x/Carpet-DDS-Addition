@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-//#if MC >= 11404 && MC <= 260200
+//#if MC >= 11404 && MC <= 260300
 import net.minecraft.network.protocol.PacketUtils;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.server.level.ServerLevel;
@@ -22,7 +22,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 
 @Mixin(ServerGamePacketListenerImpl.class)
 public abstract class ServerContainerClickMixin {
-    //#if MC >= 11404 && MC <= 260200
+    //#if MC >= 11404 && MC <= 260300
     @Inject(method = "handleContainerClick", at = @At("HEAD"), cancellable = true)
     private void dds$handleQuickContainerClick(ServerboundContainerClickPacket packet, CallbackInfo ci) {
         if (!QuickContainerAccessCompat.shouldInspectContainerClickPackets()) return;
@@ -53,7 +53,10 @@ public abstract class ServerContainerClickMixin {
         //#endif
         if (menu.containerId != packetContainerId || player.isSpectator()) return;
         if (!QuickContainerAccessCompat.handleInventoryClick(
-                menu, packetSlotNum, packetButtonNum, packetClickType, player)) return;
+                menu, packetSlotNum, packetButtonNum, packetClickType, player)) {
+            QuickContainerAccessCompat.beforeVanillaClick(menu, packetSlotNum, packetButtonNum, packetClickType, player);
+            return;
+        }
         player.resetLastActionTime();
         //#if MC >= 11701
         //$$ player.containerMenu.sendAllDataToRemote();
@@ -62,6 +65,12 @@ public abstract class ServerContainerClickMixin {
         player.broadcastCarriedItem();
         //#endif
         ci.cancel();
+    }
+
+    @Inject(method = "handleContainerClick", at = @At("TAIL"))
+    private void dds$completeQuickContainerOrigin(ServerboundContainerClickPacket packet, CallbackInfo ci) {
+        ServerGamePacketListenerImpl listener = (ServerGamePacketListenerImpl) (Object) this;
+        QuickContainerAccessCompat.afterVanillaClick(listener.player);
     }
     //#endif
 }

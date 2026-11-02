@@ -233,6 +233,20 @@ java_root = (
     / "java"
 )
 
+for source_root in (ROOT / "src", ROOT / "versions"):
+    if not source_root.exists():
+        continue
+    for java_file in source_root.rglob("*.java"):
+        if "build" in java_file.parts:
+            continue
+        for line_number, line in enumerate(java_file.read_text(encoding="utf-8").splitlines(), 1):
+            stripped = line.lstrip()
+            if stripped.startswith("//$") and not stripped.startswith("//$$"):
+                errors.append(
+                    f"{java_file.relative_to(ROOT)}:{line_number}: "
+                    "invalid single-dollar ReplayMod preprocess marker"
+                )
+
 
 if not settings_gradle_file.exists():
     errors.append(
@@ -351,7 +365,6 @@ else:
 #
 network_test_files = (
     "DdsProtocolContractTest.java",
-    "DdsClientStateTest.java",
     "DdsPacketRegistryContractTest.java",
     "DdsFixedWindowLimiterContractTest.java",
     "DdsServerRoutePolicyTest.java",
@@ -691,6 +704,58 @@ for rule in rule_list:
                     f"{language}"
                 )
 
+    suggestions = rule.get(
+        "suggestions"
+    )
+
+    if suggestions is not None:
+        if (
+            not isinstance(
+                suggestions,
+                list,
+            )
+            or not suggestions
+        ):
+            errors.append(
+                f"rule {rule_name} suggestions "
+                "must be a non-empty list"
+            )
+        else:
+            if len(suggestions) != len(set(suggestions)):
+                errors.append(
+                    f"rule {rule_name} suggestions "
+                    "contains duplicates"
+                )
+
+            for suggestion in suggestions:
+                if (
+                    not isinstance(
+                        suggestion,
+                        str,
+                    )
+                    or not suggestion
+                ):
+                    errors.append(
+                        f"rule {rule_name} has "
+                        "an invalid suggestion"
+                    )
+
+    strict = rule.get(
+        "strict"
+    )
+
+    if (
+        strict is not None
+        and not isinstance(
+            strict,
+            bool,
+        )
+    ):
+        errors.append(
+            f"rule {rule_name} strict "
+            "must be boolean"
+        )
+
     display_name = rule.get(
         "displayName"
     )
@@ -761,6 +826,109 @@ else:
 
 
 # ---------------------------------------------------------------------------
+# DDS rule core / ownership contract
+# ---------------------------------------------------------------------------
+
+rule_core_files = (
+    "DdsRule.java",
+    "DdsRuleCodec.java",
+    "DdsRuleCodecs.java",
+    "DdsRuleChange.java",
+    "DdsRuleRegistry.java",
+)
+
+rule_core_root = (
+    java_root
+    / "carpetddsaddition"
+    / "core"
+    / "rules"
+)
+
+for file_name in rule_core_files:
+    if not (rule_core_root / file_name).exists():
+        errors.append(
+            "missing DDS typed rule core source: "
+            f"carpetddsaddition/core/rules/{file_name}"
+        )
+
+carpet_platform_root = (
+    java_root
+    / "carpetddsaddition"
+    / "platform"
+    / "carpet"
+)
+
+required_carpet_rule_files = (
+    "DdsSettingsManager.java",
+    "DdsCarpetRule.java",
+    "DdsRuleCommandCompat.java",
+    "DdsRuleConfigMigration.java",
+)
+
+for file_name in required_carpet_rule_files:
+    if not (carpet_platform_root / file_name).exists():
+        errors.append(
+            "missing DDS Carpet rule ownership source: "
+            f"carpetddsaddition/platform/carpet/{file_name}"
+        )
+
+carpet_rule_compat_file = carpet_platform_root / "CarpetRuleCompat.java"
+if carpet_rule_compat_file.exists():
+    carpet_rule_compat_text = carpet_rule_compat_file.read_text(encoding="utf-8")
+
+    if "CarpetServer.settingsManager.parseSettingsClass" in carpet_rule_compat_text:
+        errors.append(
+            "CDA rules must not be registered into CarpetServer.settingsManager"
+        )
+
+    required_rule_compat_markers = (
+        "DdsSettingsManager",
+        "manager.parseSettingsClass(CarpetDDSAdditionSettings.class)",
+        "manager.addCarpetRule(",
+        "DDSRules.registry().available()",
+    )
+    for required_marker in required_rule_compat_markers:
+        if required_marker not in carpet_rule_compat_text:
+            errors.append(
+                "CarpetRuleCompat missing ownership invariant: "
+                f"{required_marker}"
+            )
+
+carpet_extension_compat_file = carpet_platform_root / "CarpetExtensionCompat.java"
+if carpet_extension_compat_file.exists():
+    extension_text = carpet_extension_compat_file.read_text(encoding="utf-8")
+    for required_marker in (
+        "extensionSettingsManager()",
+        "customSettingsManager()",
+        "CarpetRuleCompat.settingsManager()",
+    ):
+        if required_marker not in extension_text:
+            errors.append(
+                "CarpetExtensionCompat missing SettingsManager invariant: "
+                f"{required_marker}"
+            )
+
+if common_gradle_file.exists():
+    required_rule_generator_markers = (
+        "generatedRuleResourceDir",
+        "DdsRule.owned(",
+        "DdsRule.bridged(",
+        "DdsRule.unavailable(",
+        'PREFIX = "carpet-dds-addition.rule."',
+        "carpet-database-rules.json",
+        "META-INF/dds",
+        "tasks.register('verifyRuleArtifact')",
+        "dependsOn tasks.named('verifyRuleArtifact')",
+        "CarpetDDSAdditionSettings.${rule.name}",
+    )
+    for required_marker in required_rule_generator_markers:
+        if required_marker not in common_gradle_text:
+            errors.append(
+                "common.gradle missing DDS rule generator invariant: "
+                f"{required_marker}"
+            )
+
+# ---------------------------------------------------------------------------
 # Version macro architectural boundary
 # ---------------------------------------------------------------------------
 
@@ -823,8 +991,6 @@ else:
 shared_network_files = (
     "DdsProtocol.java",
     "DdsPacketRegistry.java",
-    "DdsClientState.java",
-    "DdsClientNetwork.java",
     "DdsServerNetwork.java",
     "DdsServerRoutePolicy.java",
 )
@@ -881,6 +1047,11 @@ feature_packet_owners = {
         "UndoRedoPackets.java"
     ),
     "fake_player_action_c2s": (
+        "carpetddsaddition/integration/"
+        "gca/fakeplayer/network/"
+        "DdsFakePlayerPackets.java"
+    ),
+    "fake_player_provider_action_c2s": (
         "carpetddsaddition/integration/"
         "gca/fakeplayer/network/"
         "DdsFakePlayerPackets.java"

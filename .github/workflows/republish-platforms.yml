@@ -20,8 +20,6 @@ jobs:
     if: ${{ github.repository == 'x-oOvOo-x/Carpet-DDS-Addition' && vars.RUNNER_MODE == 'self-hosted' }}
     runs-on: [self-hosted, Windows, X64]
     env:
-      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-      MODRINTH_PROJECT_SLUG: ${{ vars.MODRINTH_PROJECT_SLUG }}
       CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
       CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
       RELEASE_TAG_INPUT: ${{ inputs.tag }}
@@ -50,29 +48,32 @@ jobs:
           if (-not (Test-Path $notes)) { throw ('Release notes not found: '+$notes) };
           gh release view $tag | Out-Null;
           if ($LASTEXITCODE -ne 0) { throw ('GitHub Release not found: '+$tag) };
-          New-Item -ItemType Directory -Force -Path 'build/releases' | Out-Null;
-          gh release download $tag --pattern '*.jar' --dir 'build/releases';
+          if (Test-Path 'build/republish') { Remove-Item 'build/republish' -Recurse -Force };
+          New-Item -ItemType Directory -Force -Path 'build/republish' | Out-Null;
+          gh release download $tag --pattern '*.jar' --dir 'build/republish';
           if ($LASTEXITCODE -ne 0) { throw ('Failed to download jars for '+$tag) };
+          ('RELEASE_TAG='+$tag) | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append;
           ('MOD_VERSION='+$ver) | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append;
           ('RELEASE_NOTES='+$notes) | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
 
-      - name: Publish versions to Modrinth
-        if: ${{ success() && env.MODRINTH_TOKEN != '' && env.MODRINTH_PROJECT_SLUG != '' }}
-        shell: cmd
-        run: py -3 scripts/publish-modrinth.py --project "%MODRINTH_PROJECT_SLUG%" --version "%MOD_VERSION%" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "%RELEASE_NOTES%"
+      - name: Check out exact release source for artifact policy
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          path: build/release-source
 
-      - name: Skip Modrinth publishing
-        if: ${{ success() && (env.MODRINTH_TOKEN == '' || env.MODRINTH_PROJECT_SLUG == '') }}
+      - name: Audit downloaded tagged release artifacts
+        id: release_preparation
         shell: cmd
-        run: echo Skipping Modrinth because its token/project is not configured.
+        run: py -3 scripts/audit_release_artifacts.py --root build/release-source --directory build/republish --production || exit /b 1
 
       - name: Publish versions to CurseForge
-        if: ${{ success() && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
+        if: ${{ !cancelled() && steps.release_preparation.outcome == 'success' && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
         shell: cmd
-        run: py -3 scripts/publish-curseforge.py --project "%CURSEFORGE_PROJECT_ID%" --version "%MOD_VERSION%" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "%RELEASE_NOTES%"
+        run: py -3 scripts/publish-curseforge.py --project "%CURSEFORGE_PROJECT_ID%" --version "%MOD_VERSION%" --release-dir build/republish --source-root build/release-source --config build/release-source/scripts/modrinth-versions.json --changelog-file "%RELEASE_NOTES%"
 
       - name: Skip CurseForge publishing
-        if: ${{ success() && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
+        if: ${{ !cancelled() && steps.release_preparation.outcome == 'success' && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
         shell: cmd
         run: echo Skipping CurseForge because its token/project is not configured.
 
@@ -80,8 +81,6 @@ jobs:
     if: ${{ github.repository == 'x-oOvOo-x/Carpet-DDS-Addition' && vars.RUNNER_MODE == 'cloud' }}
     runs-on: windows-latest
     env:
-      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-      MODRINTH_PROJECT_SLUG: ${{ vars.MODRINTH_PROJECT_SLUG }}
       CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
       CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
       RELEASE_TAG_INPUT: ${{ inputs.tag }}
@@ -101,27 +100,30 @@ jobs:
           RELEASE_NOTES="docs/release-notes/${RELEASE_TAG}.md"
           [[ -f "$RELEASE_NOTES" ]] || { echo "Release notes not found: $RELEASE_NOTES"; exit 1; }
           gh release view "$RELEASE_TAG" >/dev/null
-          mkdir -p build/releases
-          gh release download "$RELEASE_TAG" --pattern '*.jar' --dir build/releases
+          rm -rf build/republish
+          mkdir -p build/republish
+          gh release download "$RELEASE_TAG" --pattern '*.jar' --dir build/republish
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
           echo "MOD_VERSION=$MOD_VERSION" >> "$GITHUB_ENV"
           echo "RELEASE_NOTES=$RELEASE_NOTES" >> "$GITHUB_ENV"
 
-      - name: Publish versions to Modrinth
-        if: ${{ success() && env.MODRINTH_TOKEN != '' && env.MODRINTH_PROJECT_SLUG != '' }}
-        shell: bash
-        run: python3 scripts/publish-modrinth.py --project "$MODRINTH_PROJECT_SLUG" --version "$MOD_VERSION" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "$RELEASE_NOTES"
+      - name: Check out exact release source for artifact policy
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          path: build/release-source
 
-      - name: Skip Modrinth publishing
-        if: ${{ success() && (env.MODRINTH_TOKEN == '' || env.MODRINTH_PROJECT_SLUG == '') }}
+      - name: Audit downloaded tagged release artifacts
+        id: release_preparation
         shell: bash
-        run: echo "Skipping Modrinth because its token/project is not configured."
+        run: python3 scripts/audit_release_artifacts.py --root build/release-source --directory build/republish --production
 
       - name: Publish versions to CurseForge
-        if: ${{ success() && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
+        if: ${{ !cancelled() && steps.release_preparation.outcome == 'success' && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
         shell: bash
-        run: python3 scripts/publish-curseforge.py --project "$CURSEFORGE_PROJECT_ID" --version "$MOD_VERSION" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "$RELEASE_NOTES"
+        run: python3 scripts/publish-curseforge.py --project "$CURSEFORGE_PROJECT_ID" --version "$MOD_VERSION" --release-dir build/republish --source-root build/release-source --config build/release-source/scripts/modrinth-versions.json --changelog-file "$RELEASE_NOTES"
 
       - name: Skip CurseForge publishing
-        if: ${{ success() && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
+        if: ${{ !cancelled() && steps.release_preparation.outcome == 'success' && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
         shell: bash
         run: echo "Skipping CurseForge because its token/project is not configured."

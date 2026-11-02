@@ -113,7 +113,18 @@
       "description": {
         "en_us": "Prevents selected passive mob groups from spawning naturally. Use none for vanilla spawning, all to block every listed group, or a comma-separated combination of land, fish, squid, axolotl, bat and dolphin. Selecting land also blocks initial creature spawning in newly generated chunks.",
         "zh_cn": "禁止所选被动生物类别自然生成。none 保持原版生成，all 禁止全部已列类别，也可使用逗号组合 land、fish、squid、axolotl、bat、dolphin；选择 land 时也会禁止新区块首次生成陆地生物。"
-      }
+      },
+      "suggestions": [
+        "none",
+        "all",
+        "land",
+        "fish",
+        "squid",
+        "axolotl",
+        "bat",
+        "dolphin"
+      ],
+      "strict": false
     },
     {
       "name": "petRegeneration",
@@ -254,7 +265,7 @@
       "type": "boolean",
       "default": true,
       "minMc": 11404,
-      "maxMc": 260200,
+      "maxMc": 260300,
       "categories": [
         "feature"
       ],
@@ -288,7 +299,7 @@
       "type": "boolean",
       "default": false,
       "minMc": 11404,
-      "maxMc": 260200,
+      "maxMc": 260300,
       "categories": [
         "feature",
         "survival"
@@ -306,7 +317,7 @@
       "type": "boolean",
       "default": false,
       "minMc": 11404,
-      "maxMc": 260200,
+      "maxMc": 260300,
       "categories": [
         "feature",
         "survival"
@@ -320,21 +331,21 @@
       }
     },
     {
-      "name": "fakePlayerInventory",
+      "name": "playerInventoryExtension",
       "type": "boolean",
       "default": false,
-      "minMc": 11904,
-      "maxMc": 260200,
+      "minMc": 12111,
+      "maxMc": 260300,
       "categories": [
         "feature",
         "survival"
       ],
       "displayName": {
-        "zh_cn": "DDS假人背包"
+        "zh_cn": "玩家背包扩展"
       },
       "description": {
-        "en_us": "Enhances GCA fake-player inventory and Ender Chest interfaces for DDS clients, including AMS expanded storage and DDS Quick Container Access compatibility. It does not grant fake-player access; clients without DDS and all players while disabled continue using GCA's original interfaces.",
-        "zh_cn": "为安装 DDS 客户端的玩家增强 GCA 假人背包及假人末影箱界面，支持 AMS 扩展容量与 DDS 快捷容器访问。该规则不会独立提供假人背包访问权限；未安装 DDS 客户端或关闭规则时均保持 GCA 原有界面和行为。"
+        "en_us": "Adds negotiated server-side session metadata and authoritative state to already-authorized GCA or Carpet Org Addition player inventory menus. It does not grant inventory access and remains optional for clients.",
+        "zh_cn": "为已经由 GCA 或 Carpet Org Addition 授权打开的玩家背包菜单附加协商式服务端会话元数据与权威状态；该规则不会授予新的背包访问权限，客户端也可不安装对应扩展。"
       }
     },
     {
@@ -358,7 +369,7 @@
       "type": "boolean",
       "default": false,
       "minMc": 11605,
-      "maxMc": 260200,
+      "maxMc": 260300,
       "categories": [
         "feature",
         "survival"
@@ -376,7 +387,7 @@
       "type": "boolean",
       "default": false,
       "minMc": 11605,
-      "maxMc": 260200,
+      "maxMc": 260300,
       "categories": [
         "feature",
         "survival"
@@ -419,7 +430,19 @@
       "description": {
         "en_us": "Prevents selected explosion types from destroying blocks while preserving entity damage, knockback, sound and particles. Use none, all for all listed types, or a comma-separated combination of creeper, tnt, tnt_minecart, end_crystal, ghast, wither and wither_skull.",
         "zh_cn": "使指定类型的爆炸不再破坏方块。可设为 none、all（全部已列出的类型），或使用逗号组合 creeper、tnt、tnt_minecart、end_crystal、ghast、wither、wither_skull。"
-      }
+      },
+      "suggestions": [
+        "none",
+        "all",
+        "creeper",
+        "tnt",
+        "tnt_minecart",
+        "end_crystal",
+        "ghast",
+        "wither",
+        "wither_skull"
+      ],
+      "strict": false
     },
     {
       "name": "noRespawnBlockExplosion",
@@ -474,6 +497,7 @@
       "type": "boolean",
       "default": false,
       "minMc": 11700,
+      "maxMc": 12111,
       "categories": [
         "feature",
         "survival"
@@ -502,7 +526,7 @@
         "en_us": "Allows supported vanilla wood families to be processed in the stonecutter using DDS-generated recipes that exist only while the rule is enabled.",
         "zh_cn": "允许受支持的原版木材族在切石机中使用 DDS 动态生成的木材加工配方；规则关闭时这些配方会从服务端配方管理器中移除。"
       },
-      "maxMc": 260200
+      "maxMc": 260300
     },
     {
       "name": "smeltConcretePowderToGlass",
@@ -567,7 +591,40 @@
       "description": {
         "en_us": "Multiplies selected blocks' vanilla mining progress by 20 without changing hardness, tool requirements or drops. Use obsidian, crying_obsidian (1.16+), deepslate (1.17+, including deepslate ores), ores (vanilla ore blocks), or all; combine modes with commas. false disables the rule. Invalid combinations disable acceleration.",
         "zh_cn": "将选中方块的原版挖掘进度提高至20倍，不修改硬度、工具要求或掉落。支持 obsidian、crying_obsidian（1.16+）、deepslate（1.17+，含深层矿石）、ores（原版矿石）及 all，可用英文逗号组合；false 关闭。无效组合不加速。"
-      }
+      },
+      "suggestions": [
+        "false",
+        "all",
+        "obsidian",
+        "crying_obsidian",
+        "deepslate",
+        "ores"
+      ],
+      "strict": false
+    },
+    {
+      "name": "autoRestock",
+      "type": "String",
+      "default": "off",
+      "minMc": 11404,
+      "maxMc": 260300,
+      "categories": [
+        "feature",
+        "survival"
+      ],
+      "displayName": {
+        "zh_cn": "自动补货"
+      },
+      "description": {
+        "en_us": "Refills an actually consumed hand stack for real Survival players from loose inventory stacks, carried shulkers, loose items in their own Ender Chest, then Ender Chest shulkers. Values: off, always (requires no client), client (requires connection-scoped opt-in). Unknown values disable restocking.",
+        "zh_cn": "为生存模式真人玩家在真实消耗物品后，依次从背包散装物品、背包潜影盒、本人末影箱散装物品和末影箱潜影盒补货。off 禁用；always 无需客户端；client 需要当前连接协商授权；非法取值禁用。"
+      },
+      "suggestions": [
+        "off",
+        "always",
+        "client"
+      ],
+      "strict": false
     }
   ]
 }

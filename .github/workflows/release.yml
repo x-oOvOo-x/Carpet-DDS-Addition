@@ -17,8 +17,6 @@ jobs:
     if: ${{ github.repository == 'x-oOvOo-x/Carpet-DDS-Addition' && vars.RUNNER_MODE == 'self-hosted' }}
     runs-on: [self-hosted, Windows, X64]
     env:
-      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-      MODRINTH_PROJECT_SLUG: ${{ vars.MODRINTH_PROJECT_SLUG }}
       CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
       CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
     steps:
@@ -58,13 +56,18 @@ jobs:
 
       - name: Audit release Mixins
         shell: cmd
-        run: gradlew.bat :1.21.11:runMixinAudit :1.21.11:runMixinAuditClient :26.2:runMixinAudit :26.2:runMixinAuditClient --stacktrace --no-parallel
+        run: gradlew.bat :1.21.11:runMixinAudit :1.21.11:runMixinAuditClient :26.2:runMixinAudit :26.2:runMixinAuditClient :26.3:runMixinAudit :26.3:runMixinAuditClient --stacktrace --no-parallel
 
       - name: Verify and build every Minecraft target
         shell: cmd
         run: gradlew.bat buildAndGather --stacktrace --no-parallel
 
+      - name: Audit final runtime JARs
+        shell: cmd
+        run: py -3 scripts/audit_release_artifacts.py --directory build/releases --production || exit /b 1
+
       - name: Create or update GitHub Release
+        id: release_preparation
         env:
           GH_TOKEN: ${{ github.token }}
         shell: cmd
@@ -79,23 +82,13 @@ jobs:
           dir /b build\releases\*.jar >nul 2>&1 || exit /b 1
           for %%F in (build\releases\*.jar) do gh release upload "%GITHUB_REF_NAME%" "%%F" --clobber || exit /b 1
 
-      - name: Publish versions to Modrinth
-        if: ${{ env.MODRINTH_TOKEN != '' && env.MODRINTH_PROJECT_SLUG != '' }}
-        shell: cmd
-        run: py -3 scripts/publish-modrinth.py --project "%MODRINTH_PROJECT_SLUG%" --version "%MOD_VERSION%" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "%RELEASE_NOTES%"
-
-      - name: Skip Modrinth publishing
-        if: ${{ env.MODRINTH_TOKEN == '' || env.MODRINTH_PROJECT_SLUG == '' }}
-        shell: cmd
-        run: echo Skipping Modrinth because its token/project is not configured.
-
       - name: Publish versions to CurseForge
-        if: ${{ always() && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
+        if: ${{ !cancelled() && steps.release_preparation.outcome == 'success' && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
         shell: cmd
         run: py -3 scripts/publish-curseforge.py --project "%CURSEFORGE_PROJECT_ID%" --version "%MOD_VERSION%" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "%RELEASE_NOTES%"
 
       - name: Skip CurseForge publishing
-        if: ${{ always() && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
+        if: ${{ !cancelled() && steps.release_preparation.outcome == 'success' && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
         shell: cmd
         run: echo Skipping CurseForge because its token/project is not configured.
 
@@ -103,8 +96,6 @@ jobs:
     if: ${{ github.repository == 'x-oOvOo-x/Carpet-DDS-Addition' && (vars.RUNNER_MODE == 'cloud' || vars.RUNNER_MODE == '') }}
     runs-on: windows-latest
     env:
-      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-      MODRINTH_PROJECT_SLUG: ${{ vars.MODRINTH_PROJECT_SLUG }}
       CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
       CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
     steps:
@@ -143,13 +134,18 @@ jobs:
 
       - name: Audit release Mixins
         shell: bash
-        run: ./gradlew :1.21.11:runMixinAudit :1.21.11:runMixinAuditClient :26.2:runMixinAudit :26.2:runMixinAuditClient --stacktrace --no-parallel
+        run: ./gradlew :1.21.11:runMixinAudit :1.21.11:runMixinAuditClient :26.2:runMixinAudit :26.2:runMixinAuditClient :26.3:runMixinAudit :26.3:runMixinAuditClient --stacktrace --no-parallel
 
       - name: Verify and build every Minecraft target
         shell: bash
         run: ./gradlew buildAndGather --stacktrace --no-parallel
 
+      - name: Audit final runtime JARs
+        shell: bash
+        run: python3 scripts/audit_release_artifacts.py --directory build/releases --production
+
       - name: Create or update GitHub Release
+        id: release_preparation
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -162,22 +158,12 @@ jobs:
           fi
           gh release upload "${GITHUB_REF_NAME}" build/releases/*.jar --clobber
 
-      - name: Publish versions to Modrinth
-        if: ${{ env.MODRINTH_TOKEN != '' && env.MODRINTH_PROJECT_SLUG != '' }}
-        shell: bash
-        run: python3 scripts/publish-modrinth.py --project "${MODRINTH_PROJECT_SLUG}" --version "${MOD_VERSION}" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "${RELEASE_NOTES}"
-
-      - name: Skip Modrinth publishing
-        if: ${{ env.MODRINTH_TOKEN == '' || env.MODRINTH_PROJECT_SLUG == '' }}
-        shell: bash
-        run: echo "Skipping Modrinth because its token/project is not configured."
-
       - name: Publish versions to CurseForge
-        if: ${{ always() && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
+        if: ${{ !cancelled() && steps.release_preparation.outcome == 'success' && env.CURSEFORGE_TOKEN != '' && env.CURSEFORGE_PROJECT_ID != '' }}
         shell: bash
         run: python3 scripts/publish-curseforge.py --project "${CURSEFORGE_PROJECT_ID}" --version "${MOD_VERSION}" --release-dir build/releases --config scripts/modrinth-versions.json --changelog-file "${RELEASE_NOTES}"
 
       - name: Skip CurseForge publishing
-        if: ${{ always() && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
+        if: ${{ !cancelled() && steps.release_preparation.outcome == 'success' && (env.CURSEFORGE_TOKEN == '' || env.CURSEFORGE_PROJECT_ID == '') }}
         shell: bash
         run: echo "Skipping CurseForge because its token/project is not configured."

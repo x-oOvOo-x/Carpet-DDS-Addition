@@ -150,7 +150,13 @@ public final class CrafterRecipeLockCompat {
     //$$     da.dds$setBillboard(Display.BillboardConstraints.FIXED);
     //$$     da.dds$setTransformation(new Transformation(new Vector3f(-.02F,-.1875F,0F), new Quaternionf(), new Vector3f(1.5F), new Quaternionf()));
     //$$     d.setPos(x, y, z); d.setYRot(yaw(face)); d.setXRot(pitch(face));
-    //$$     d.setNoGravity(true); d.setInvulnerable(true); d.setSilent(true);
+    //$$     d.setNoGravity(true);
+    //#if MC >= 260300
+    //$$     d.setPermanentlyInvulnerable(true);
+    //#else
+    //$$     d.setInvulnerable(true);
+    //#endif
+    //$$     d.setSilent(true);
     //$$     d.addTag(VISUAL_TAG); d.addTag(tag); l.addFreshEntity(d);
     //$$ }
     //$$
@@ -198,7 +204,11 @@ public final class CrafterRecipeLockCompat {
     //$$ }
     //$$
     //$$ private static void unlockFeedback(ServerLevel l, BlockPos p) {
+    //#if MC >= 260300
+    //$$     l.playSound(null, p, SoundEvents.AXE_WAX_OFF.value(), SoundSource.BLOCKS, 1F, 1F);
+    //#else
     //$$     l.playSound(null, p, SoundEvents.AXE_WAX_OFF, SoundSource.BLOCKS, 1F, 1F);
+    //#endif
     //$$ }
     //$$
     //$$ private static String visualTag(BlockPos p) { return VISUAL_TAG+"_"+p.asLong(); }

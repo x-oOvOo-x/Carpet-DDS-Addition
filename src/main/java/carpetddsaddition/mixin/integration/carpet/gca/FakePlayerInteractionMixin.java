@@ -6,9 +6,9 @@
  */
 package carpetddsaddition.mixin.integration.carpet.gca;
 
-//#if MC >= 11904 && MC <= 260200
+//#if MC >= 11904 && MC <= 260300
 //$$ import carpet.patches.EntityPlayerMPFake;
-//$$ import carpetddsaddition.integration.gca.fakeplayer.DdsFakePlayerAccess;
+//$$ import carpetddsaddition.integration.gca.fakeplayer.DdsGcaDeniedEnderIntentGuard;
 //$$ import net.minecraft.server.level.ServerPlayer;
 //$$ import net.minecraft.world.InteractionHand;
 //$$ import net.minecraft.world.InteractionResult;
@@ -25,7 +25,7 @@ package carpetddsaddition.mixin.integration.carpet.gca;
 //$$ @Mixin(value = Player.class, priority = 1100)
 //$$ public abstract class FakePlayerInteractionMixin {
 //$$     @Inject(method = "interactOn", at = @At("HEAD"), cancellable = true)
-//$$     private void dds$enhanceGcaFakePlayerInventory(
+//$$     private void dds$rejectDeniedGcaFakePlayerEnder(
 //$$             Entity entity, InteractionHand hand,
 //#if MC >= 260000
 //$$             Vec3 interactionPos,
@@ -34,7 +34,8 @@ package carpetddsaddition.mixin.integration.carpet.gca;
 //$$         Player self = (Player) (Object) this;
 //$$         if (!(self instanceof ServerPlayer) || !(entity instanceof EntityPlayerMPFake)) return;
 //$$         ServerPlayer viewer = (ServerPlayer) self;
-//$$         if (!DdsFakePlayerAccess.tryOpenEnhanced(viewer, (EntityPlayerMPFake) entity, viewer.isShiftKeyDown())) return;
+//$$         EntityPlayerMPFake target = (EntityPlayerMPFake) entity;
+//$$         if (!DdsGcaDeniedEnderIntentGuard.shouldConsume(viewer, target)) return;
 //$$         viewer.stopUsingItem();
 //$$         cir.setReturnValue(InteractionResult.CONSUME);
 //$$     }

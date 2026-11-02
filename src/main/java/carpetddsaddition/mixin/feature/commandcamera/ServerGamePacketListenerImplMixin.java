@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.mixin.feature.commandcamera;
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ import carpetddsaddition.feature.commandcamera.compat.CommandCameraCompat;
 //$$ import carpetddsaddition.feature.commandcamera.compat.CommandCameraMapTeleportCompat;
 //$$ import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
@@ -30,7 +30,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 //#endif
 
-//#if MC >= 11601 && MC <= 260200
+//#if MC >= 11601 && MC <= 260300
 //$$ @Mixin(ServerGamePacketListenerImpl.class)
 //$$ public abstract class ServerGamePacketListenerImplMixin {
 //$$     @Shadow public ServerPlayer player;

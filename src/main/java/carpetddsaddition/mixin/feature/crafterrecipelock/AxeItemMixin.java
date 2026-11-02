@@ -6,7 +6,7 @@
  */
 package carpetddsaddition.mixin.feature.crafterrecipelock;
 
-//#if MC >= 12004
+//#if MC >= 12004 && MC < 260300
 //$$ import carpetddsaddition.feature.crafterrecipelock.compat.CrafterRecipeLockCompat;
 //$$ import net.minecraft.world.InteractionResult;
 //$$ import net.minecraft.world.item.AxeItem;
@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 //#endif
 
-//#if MC >= 12004
+//#if MC >= 12004 && MC < 260300
 //$$ @Mixin(AxeItem.class)
 //$$ public abstract class AxeItemMixin {
 //$$     @Inject(method = "useOn", at = @At("HEAD"), cancellable = true)

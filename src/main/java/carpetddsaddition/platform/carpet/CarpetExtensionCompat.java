@@ -31,11 +31,37 @@ import carpetddsaddition.core.lifecycle.DdsLifecycle;
 
 public abstract class CarpetExtensionCompat implements CarpetExtension {
     //#if MC >= 11902
+    //$$ @Override
+    //$$ public void registerCommands(
+    //$$         com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher,
+    //$$         net.minecraft.commands.CommandBuildContext commandBuildContext) {
+    //$$     DdsRuleCommandCompat.register(dispatcher);
+    //$$ }
+    //#elseif MC >= 11601
+    //$$ @Override
+    //$$ public void registerCommands(
+    //$$         com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> dispatcher) {
+    //$$     DdsRuleCommandCompat.register(dispatcher);
+    //$$ }
+    //#endif
+    //#if MC >= 11902
+    //$$ @Override
+    //$$ public carpet.api.settings.SettingsManager extensionSettingsManager() {
+    //$$     return CarpetRuleCompat.settingsManager();
+    //$$ }
+    //#else
+    @Override
+    public carpet.settings.SettingsManager customSettingsManager() {
+        return CarpetRuleCompat.settingsManager();
+    }
+    //#endif
+    //#if MC >= 11902
     //$$ @Override public Map<String, String> canHasTranslations(String lang) { return DDSRuleTranslations.forLanguage(lang); }
     //#endif
     //#if MC >= 11700
     //$$ @Override public void onServerLoaded(MinecraftServer server) { DdsLifecycle.onServerLoaded(server); }
     //$$ @Override public void onReload(MinecraftServer server) { DdsLifecycle.onReload(server); }
+    //$$ @Override public void onTick(MinecraftServer server) { DdsLifecycle.onTick(server); }
     //$$ @Override public void onServerClosed(MinecraftServer server) { DdsLifecycle.onServerClosed(server); }
     //#endif
 }

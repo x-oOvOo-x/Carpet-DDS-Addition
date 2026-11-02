@@ -107,8 +107,12 @@ public final class ConcretePowderToGlassCompat {
 
     //#if MC >= 12101
     //$$ public static Optional<RecipeHolder<?>> findRecipe(RecipeType<?> recipeType, RecipeInput input) {
+    //#if MC >= 12103
+    //$$     return Optional.empty(); // Modern recipes are part of the enumerable RecipeMap.
+    //#else
     //$$     if (!DDSRules.smeltConcretePowderToGlass() || recipeType != RecipeType.SMELTING || !(input instanceof SingleRecipeInput)) return Optional.empty();
     //$$     return Optional.ofNullable(RECIPES_BY_INPUT.get(((SingleRecipeInput) input).item().getItem()));
+    //#endif
     //$$ }
     //#elseif MC >= 12002
     //$$ public static Optional<RecipeHolder<?>> findRecipe(RecipeType<?> recipeType, Container input) {
@@ -137,8 +141,24 @@ public final class ConcretePowderToGlassCompat {
     public static Optional<SmeltingRecipe> findRecipeById(ResourceLocation recipeId) { return Optional.ofNullable(RECIPES_BY_ID.get(recipeId)); }
     //#endif
 
+    //#if MC >= 12103
+    //$$ public static java.util.Collection<RecipeHolder<?>> candidateRecipes() {
+    //$$     return java.util.List.copyOf(RECIPES_BY_ID.values());
+    //$$ }
+    //$$ public static ItemStack inputFor(Object id) {
+    //$$     for (Map.Entry<Item, RecipeHolder<?>> entry : RECIPES_BY_INPUT.entrySet()) {
+    //$$         if (entry.getValue().id().equals(id)) return new ItemStack(entry.getKey());
+    //$$     }
+    //$$     return ItemStack.EMPTY;
+    //$$ }
+    //#endif
+
     public static boolean isEnabledFurnaceInput(ItemStack stack) {
+        //#if MC >= 12103
+        //$$ return false; // Standard recipe enumeration handles modern furnace shift-click.
+        //#else
         return DDSRules.smeltConcretePowderToGlass() && !stack.isEmpty() && RECIPES_BY_INPUT.containsKey(stack.getItem());
+        //#endif
     }
 
     private static void register(String color, Item concretePowder, Item stainedGlass) {

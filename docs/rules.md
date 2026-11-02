@@ -4,6 +4,16 @@
 
 This document lists the Carpet rules currently provided by Carpet DDS Addition and explains their behavior in detail.
 
+CDA rules are managed independently through `/cda` (short alias) or
+`/carpet-dds-addition`. Existing `/carpet <rule> <value>` commands shown
+below remain supported for compatibility. Persistent CDA rule overrides are
+stored in the world's `carpet-dds-addition.conf`; when upgrading, CDA
+migrates its existing entries from `carpet.conf`, preserving overrides
+already present in the new file. Other Carpet rules continue to use their
+respective managers and configuration files.
+
+CDA runs on the server; DDS Tweak (DT) provides optional client UI and interactions on supported versions. Installing CDA on the client is not required.
+
 ---
 
 ## Place Water with Ice (icePlaceWater)
@@ -462,20 +472,20 @@ Comparator output keeps the Crafter's vanilla 0–9 slot-count semantics. On a l
 
 Controls the optional DDS client-server network protocol.
 
-This protocol provides a dedicated communication channel for DDS features that support negotiated client-side enhancements.
+This protocol provides a dedicated communication channel for compatible DDS Tweak clients and negotiated feature enhancements.
 
-A DDS client installation is not required to connect to a server running DDS.
+DDS Tweak is not required to connect to a server running CDA.
 
-Players without DDS installed on the client can still connect normally and use DDS functionality that is implemented entirely on the server.
+Players without DT installed can still connect normally and use functionality implemented entirely on the CDA server.
 
-For example, most `quickContainerAccess` item operations are implemented authoritatively on the server. Installing the same DDS version on the client additionally reduces incorrect vanilla prediction flicker and enables negotiated QCA slot interactions on the Creative survival-inventory tab.
+For example, most `quickContainerAccess` item operations are server-authoritative. On supported versions, a compatible DT client can also reduce vanilla prediction flicker and enable negotiated QCA interactions on the Creative survival-inventory tab.
 
 It is generally recommended to keep this rule enabled.
 
 - Type: `boolean`
 - Default: `true`
 - Suggested options: `true`, `false`
-- Supported versions: `1.14.4–26.2`
+- Supported versions: `1.14.4–26.3`
 - Categories: `feature`
 
 ---
@@ -495,9 +505,9 @@ When enabled, the following commands are available:
 
 The feature is restricted to Creative-mode players. Survival-mode and other non-Creative players cannot perform Undo or Redo.
 
-The DDS client is optional. A server-only installation provides the complete `/undo` and `/redo` workflow.
+Neither CDA nor DT is required on the client. Installing CDA on the server and enabling this rule provides `/undo` and `/redo` commands.
 
-When compatible DDS builds are installed on both the client and server and `ddsNetworkProtocol` is enabled, the following shortcuts are also available:
+With a compatible DDS Tweak client and the server's `ddsNetworkProtocol` enabled, the following shortcuts are also available:
 
 ```text
 Ctrl+Z       Undo
@@ -559,7 +569,7 @@ Main interactions:
 - Carry a single shulker box or Ender Chest and right-click an ordinary stack to absorb it, or right-click an empty compatible slot to extract the last non-empty internal stack.
 - While a shulker box is open through QCA, carry another single shulker box and right-click the opened shulker's protected source slot to merge the carried shulker's contents into the currently open shulker. Compatible stacks are merged first, then empty slots are filled, and any remainder stays in the carried shulker.
 
-In Creative mode, QCA operates on real player-inventory slots only while the survival-inventory tab is selected. Creative item-picker tabs, including the player hotbar row rendered at the bottom of those tabs, are intentionally left entirely to vanilla: QCA does not perform portable opening, quick storage, right-drag storage, or local prediction suppression there. QCA slot interactions on the Creative survival-inventory tab require a compatible DDS client and an available DDS network protocol.
+In Creative mode, QCA operates on real player-inventory slots only while the survival-inventory tab is selected. Creative item-picker tabs, including the player hotbar row rendered at the bottom of those tabs, are intentionally left entirely to vanilla: QCA does not perform portable opening, quick storage, right-drag storage, or local prediction suppression there. QCA slot interactions on the Creative survival-inventory tab require a compatible DT client and an available DDS network protocol.
 
 Nested opening is supported from validated slots in persistent vanilla container menus and from the GCA/DDS fake-player interfaces when GCA grants access. This allows chains such as:
 
@@ -572,9 +582,9 @@ Fake-player inventory → Shulker Box → Workstation
 
 Ender Chests always resolve to the current inventory owner's canonical Ender Chest. Re-entering an Ender Chest already present in the active path navigates back to that existing node instead of recursively nesting another copy. GCA control slots, invalid/result-only slots, and slots that do not permit normal pickup or placement are excluded from direct QCA mutation.
 
-Mutable shulker access always requires a stack count of exactly `1`. Invalid sessions are terminated rather than repaired by splitting stacked shulkers or giving replacement items. Active item-backed sources are identity-leased so another QCA writer cannot mutate the same source concurrently. The server remains authoritative for all item changes.
+Mutable shulker access always requires a stack count of exactly `1`. Invalid sessions are terminated rather than repaired by splitting stacked shulkers or giving replacement items. Active item-backed sources are identity-leased so another QCA writer cannot mutate the same source concurrently. The server remains authoritative for all item changes. Quick transfers respect the destination slot's actual capacity. Remote Ender Chest operations must preserve the authorized owner's identity, live session and 27/54-slot capacity rather than silently falling back to the viewer's Ender Chest.
 
-A DDS client is not required for the main server-recognizable QCA gameplay paths. Installing the same DDS build additionally enables the dedicated Creative survival-inventory slot interactions and suppresses incorrect vanilla local prediction for DDS quick right-clicks, reducing item and shulker-tooltip flicker.
+DT is not required for the main server-recognizable QCA gameplay paths. On supported versions, a compatible DT client adds Creative survival-inventory slot interactions and suppresses incorrect vanilla prediction for quick right-clicks, reducing item and shulker-tooltip flicker.
 
 Soft compatibility is provided for Carpet AMS Addition `largeShulkerBox` and `largeEnderChest`. AMS `largeEnderChest` requires the player to rejoin after enabling the rule before an already-online player's Ender Chest is actually resized to 54 slots.
 
@@ -582,7 +592,7 @@ Soft compatibility is provided for Carpet AMS Addition `largeShulkerBox` and `la
 - Default: `false`
 - Suggested options: `true`, `false`
 - Note: Available portable workstation targets depend on which blocks and menus exist in the corresponding vanilla Minecraft version.
-- Supported versions: `1.14.4–26.2`
+- Supported versions: `1.14.4–26.3`
 - Categories: `feature`, `survival`
 
 ---
@@ -596,27 +606,23 @@ Ender Chest, anvil, and other QCA sounds and behavior remain unchanged.
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.14.4–26.2`
+- Supported versions: `1.14.4–26.3`
 - Categories: `feature`, `survival`
 
 ---
 
-## DDS Fake-Player Inventory (fakePlayerInventory)
+## Player Inventory Extension (playerInventoryExtension)
 
-Enhances GCA fake-player inventory and Ender Chest interfaces for players using a DDS client. This rule does not grant fake-player inventory access by itself: GCA remains responsible for whether the viewer may open the fake player's inventory or Ender Chest.
+Adds negotiated server-side Session, Context and authoritative state metadata to player inventory menus that the viewer has already been allowed to open through GCA or Carpet Org Addition.
 
-When the rule is enabled and the viewer has a compatible DDS client, DDS replaces the corresponding GCA screen with its enhanced interface. When the rule is disabled, or when the viewer does not have DDS installed, GCA's original interface and behavior remain unchanged.
+This rule does **not** grant access to another player's inventory or Ender Chest, does not replace Provider permission checks, and does not make DDS Tweak mandatory. For compatible DT clients, GCA sneak-right-click is treated strictly as an Ender request: when GCA does not authorize that Ender access, DDS consumes the interaction instead of allowing GCA to fall through to its 9x3 controller menu. Ordinary non-sneak inventory access is unchanged. When disabled, Provider menus and the basic DT Provider UI continue to work without this extension metadata.
 
-The enhanced fake-player inventory provides action controls, editable attack/use intervals, number-key and on-screen hotbar selection, and separate main-inventory/hotbar container grouping so supported sorters can operate on those regions independently.
-
-The enhanced fake-player Ender Chest uses the fake player's real Ender Chest inventory, supports both the vanilla 27-slot size and Carpet AMS Addition's 54-slot `largeEnderChest`, and provides bulk store, take, drop, sneak-toggle and disconnect controls.
-
-DDS Quick Container Access can operate on the real fake-player inventory and Ender Chest slots while preserving GCA control slots and server-authoritative item validation.
+The extension binds authority to the current viewer connection, exact Menu object, container id, target UUID/live instance and canonical container size. Strict-capability clients additionally receive a session generation, state revision and explicit clear events so stale packets cannot revive an old menu session.
 
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.19.4–26.2`
+- Supported versions: `1.21.11–26.3`
 - Categories: `feature`, `survival`
 
 ---
@@ -630,7 +636,8 @@ The rule handles drops that belong to the same synchronous drop chain as the cur
 - Drops produced directly by player block breaking;
 - Synchronous chain drops caused by bamboo, cactus, sugar cane, scaffolding, and similar blocks breaking or losing support;
 - Items released from broken container blocks;
-- Synchronous harvest drops produced by `rightClickHarvest`.
+- Synchronous harvest drops produced by `rightClickHarvest`;
+- Vanilla interaction drops from ripe sweet berries, cave-vine glow berries, shearing beehives or pumpkins, and brushing suspicious sand/gravel when directly attributable to the player.
 
 Items are still generated according to vanilla drop and loot logic. This rule only changes where the resulting item entities are delivered.
 
@@ -638,7 +645,7 @@ When the player's inventory has enough space, the items are inserted directly in
 
 When the inventory is full or cannot accept all items, the remaining items continue to drop normally into the world.
 
-The rule only tracks synchronous drops associated with the current player action. It does not continue collecting unrelated items produced during later game ticks.
+Scaffolding cascades may retain bounded attribution across game ticks when an accepted scheduled tick and its immediate scaffolding successors belong to the same player-triggered chain. Falling scaffolding entities keep only runtime session-local attribution. Unrelated scheduled ticks or item drops are never collected.
 
 - Type: `boolean`
 - Default: `false`
@@ -681,6 +688,25 @@ If Camera mode is not currently active, Camera mode is entered first and the spe
 
 If Camera mode is already active, the current spectating target is switched directly.
 
+Camera also provides position, player, and dimension teleports:
+
+```text
+/c tp <x> <y> <z>
+/c tp <player>
+/c tp dimension <dimension>
+/c tp dimension <dimension> <x> <y> <z>
+```
+
+`/c tp <x> <y> <z>` teleports within the current dimension. Coordinates use vanilla command parsing, including absolute, relative, and local coordinates.
+
+`/c tp <player>` teleports to the specified online player's dimension, position, and rotation without entering follow mode.
+
+When only a destination dimension is supplied, DDS uses the vanilla command-source dimension conversion to calculate the corresponding position. Overworld and Nether coordinates therefore use the vanilla 8:1 scale, while custom dimensions follow their own vanilla coordinate-scale values.
+
+When both a dimension and coordinates are supplied, the coordinates are resolved in the destination dimension's command context. Absolute coordinates are used directly; relative and local coordinates are based on the automatically converted corresponding position.
+
+All Camera teleport paths share one chunk policy. Already-loaded destination chunks are always allowed. For an unloaded destination, DDS reads the server's current vanilla spectator chunk-generation gamerule; the destination is loaded/generated only when that rule permits spectator chunk loading. DDS never changes the global gamerule itself.
+
 ### Entry Requirements
 
 The player's state is checked before Camera mode can be entered.
@@ -704,6 +730,8 @@ Potion/status effects, health, hunger, experience, inventory, pose, item-use pro
 
 `/c back` and void auto-return are Camera-only recovery paths: they stop follow, keep Spectator, clear current spectator velocity, and never restore or rewrite the Survival snapshot. If the saved Y is below the dimension floor, only this Camera return uses `minBuildHeight + 1`; the immutable original Y is unchanged.
 
+`/c follow` preserves its target across supported dimension transitions and retries camera attachment after teleports. The End exit/credits transition may temporarily suspend following while the target entity is rebuilt, then resume by UUID instead of treating the target as offline.
+
 Only an explicit `/c` exit restores the exact original dimension, position, view, motion, and saved Survival state. Minecraft playerdata is force-saved before the DDS Session is deleted. Any failed restore or commit keeps the Session retryable and reasserts Spectator state on a later tick/login.
 
 Disconnecting, stopping the server, exiting or crashing the client, switching servers, death/respawn, and external game-mode changes do not delete the Session. This prevents spectator movement from permanently relocating a Survival player while preserving recovery after abnormal exits.
@@ -711,7 +739,7 @@ Disconnecting, stopping the server, exiting or crashing the client, switching se
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.16.5–26.2`
+- Supported versions: `1.16.5–26.3`
 - Categories: `feature`, `survival`
 
 ---
@@ -729,7 +757,7 @@ This rule does not alter Camera session persistence, the immutable saved origin,
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.16.5–26.2`
+- Supported versions: `1.16.5–26.3`
 - Categories: `feature`, `survival`
 
 ---
@@ -839,12 +867,12 @@ Underwater mining and all other mining-speed modifiers remain vanilla.
 
 Allows deepslate to use every stonecutting recipe available to cobbled deepslate.
 
-The rule only expands valid stonecutter inputs for deepslate and does not change the vanilla output counts of those recipes.
+The rule only expands valid stonecutter inputs for deepslate and does not change the vanilla output counts of those recipes. Minecraft 26.1 and later already provide this conversion in vanilla, so CDA no longer registers this rule or duplicates those recipes.
 
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.17+`
+- Supported versions: `1.17–1.21.11`
 - Categories: `feature`, `survival`
 
 ---
@@ -889,7 +917,7 @@ Equivalent recipes are generated for other supported vanilla wood families when 
 - Type: `boolean`
 - Default: `false`
 - Suggested options: `true`, `false`
-- Supported versions: `1.21.3–26.2`
+- Supported versions: `1.21.3–26.3`
 - Categories: `feature`, `survival`
 
 ---
@@ -981,3 +1009,33 @@ Combine modes with commas, for example:
 Modes take effect immediately. Unavailable blocks on older versions are ignored. Duplicate modes are harmless; surrounding whitespace is ignored. Use lowercase names. Unknown names, empty entries (including a trailing comma), and combinations containing `false` disable acceleration for the entire value.
 
 `deepslate` does not include cobbled/polished deepslate or deepslate building blocks. `ores` does not include ancient debris, raw ore blocks or modded ores. Those blocks can still be affected by `all`.
+---
+
+## Auto Restock (autoRestock)
+
+After a real Survival player **actually consumes** an item through ordinary use or completed eating, the server can refill only that consumed main-hand or offhand slot when the remaining count meets the threshold. Merely moving items or having a low stack count never triggers restocking.
+
+The server searches for an identical item ID and item data (legacy NBT or modern data components), in this order:
+
+1. Loose stacks in the player's inventory (main inventory before other hotbar slots);
+2. Bundles in the player's inventory (where supported by Minecraft 1.20.5+);
+3. Shulker boxes carried in the player's inventory;
+4. Bundles stored directly inside those shulker boxes (where supported);
+5. Loose stacks in the player's own Ender Chest;
+6. Bundles in the player's own Ender Chest (where supported);
+7. Shulker boxes in the player's own Ender Chest;
+8. Bundles stored directly inside those Ender Chest shulker boxes (where supported).
+
+Bundles support bounded nested-bundle extraction, but shulker boxes are inspected only one level deep. One consumption event draws from **at most one source stack**, never merges multiple sources, and transfers no more than the hand slot can hold. Partial refills are allowed. QCA source leases, AMS 27/54-slot capacity/overflow rules, and item-quantity conservation remain enforced.
+
+The Ender Chest need not be open, and QCA need not be enabled. This feature does **not** access other players', fake players' or nearby containers, and does not trigger DT Auto Eat without accessible food.
+
+- Type: `String`
+- Default: `off`
+- Suggested options: `off`, `always`, `client`
+- Supported versions: `1.14.4–26.3`
+- Categories: `feature`, `survival`
+
+Only items with a **maximum stack size greater than 1** can be restocked; non-stackable tools are not replaced.
+
+`always` works without DT and refills on depletion. `client` requires a compatible DT client, connection-scoped opt-in, item filters and threshold support for that Minecraft version. The former `shulkerRestock` setting was renamed `autoRestock`; rename legacy `carpet.conf` entries before migration if necessary.
