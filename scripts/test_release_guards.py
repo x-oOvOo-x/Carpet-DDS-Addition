@@ -9,6 +9,9 @@ from unittest.mock import patch
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
+# The Public export records its Dev source, but intentionally excludes Dev-only
+# publisher tooling. Keep production gates tested in both repository layouts.
+IS_PUBLIC_EXPORT = (ROOT / '.cda-publish-source.json').is_file()
 
 
 class ReleaseWiringTest(unittest.TestCase):
@@ -39,15 +42,21 @@ class ReleaseWiringTest(unittest.TestCase):
             self.assertIn("steps.release_preparation.outcome == 'success'", job)
 
     def test_export_artifact_audit_precedes_archive_even_for_dry_run(self):
-        script = (ROOT / 'tools/publish-public.ps1').read_text()
+        publisher = ROOT / 'tools/publish-public.ps1'
+        if IS_PUBLIC_EXPORT:
+            self.assertFalse(publisher.exists(), 'Dev publisher must be absent in Public')
+            return
+        script = publisher.read_text()
         self.assertNotIn('check_p7_release_readiness', script)
         self.assertLess(script.index('"scripts/audit_release_artifacts.py", "--directory", "build/releases", "--production"'),
                         script.index('@("archive"'))
 
     def test_executable_release_paths_no_longer_read_p7_receipts(self):
-        paths = ('scripts/audit_release_artifacts.py', 'tools/publish-public.ps1',
+        paths = ('scripts/audit_release_artifacts.py',
                  '.github/workflows/build.yml', '.github/workflows/release.yml',
                  '.github/workflows/republish-platforms.yml')
+        if not IS_PUBLIC_EXPORT:
+            paths += ('tools/publish-public.ps1',)
         for path in paths:
             text = (ROOT / path).read_text()
             self.assertNotIn('check_p7_release_readiness', text, path)
@@ -62,11 +71,20 @@ class ReleaseWiringTest(unittest.TestCase):
         self.assertNotIn("|| 'ci-main'", workflow)
         upload_step = workflow.split('- name: Publish temporary CI PR release', 1)[1].split('- name: Stop Gradle daemons', 1)[0]
         self.assertIn("github.repository == 'x-oOvOo-x/Carpet-DDS-Addition-Dev'", upload_step)
-        attributes = (ROOT / '.gitattributes').read_text()
-        self.assertIn('scripts/publish-ci-pr-release.ps1 export-ignore', attributes)
+        if IS_PUBLIC_EXPORT:
+            self.assertFalse((ROOT / '.gitattributes').exists(),
+                             'Dev export policy must be absent in Public')
+            self.assertFalse((ROOT / 'scripts/publish-ci-pr-release.ps1').exists(),
+                             'Dev PR publisher must be absent in Public')
+        else:
+            attributes = (ROOT / '.gitattributes').read_text()
+            self.assertIn('scripts/publish-ci-pr-release.ps1 export-ignore', attributes)
 
     def test_pr_release_script_validates_complete_set_before_api_write(self):
         path = ROOT / 'scripts/publish-ci-pr-release.ps1'
+        if IS_PUBLIC_EXPORT:
+            self.assertFalse(path.exists(), 'Dev PR publisher must be absent in Public')
+            return
         self.assertTrue(path.is_file(), 'PR prerelease publisher is required')
         script = path.read_text()
         self.assertIn("$env:GITHUB_EVENT_NAME -ne 'pull_request'", script)

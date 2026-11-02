@@ -2,6 +2,8 @@
 .gradle/
 **/build/
 build/
+# Java tests use a package named 'build'; do not mistake it for Gradle output.
+!/src/test/java/carpetddsaddition/build/
 
 # Minecraft runtime
 run/
